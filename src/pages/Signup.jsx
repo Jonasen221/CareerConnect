@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import { formatAuthFlowError } from '@/lib/formatAuthFlowError';
+import SupabaseStatusBanner from '@/components/auth/SupabaseStatusBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,7 +32,7 @@ export default function Signup() {
         navigate('/');
       }
     } catch (err) {
-      setError(err.message || 'Failed to sign up');
+      setError(formatAuthFlowError(err));
     } finally {
       setLoading(false);
     }
@@ -62,6 +65,15 @@ export default function Signup() {
           <h1 className="text-2xl font-semibold text-slate-800">Create your account</h1>
           <p className="text-sm text-slate-500">Join CareerConnect</p>
         </div>
+
+        {!isSupabaseConfigured && (
+          <div className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <strong>Supabase is not configured.</strong> Copy <code className="text-xs">.env.example</code> to{' '}
+            <code className="text-xs">.env.local</code>, add your project URL and anon key, then restart the dev server.
+          </div>
+        )}
+
+        <SupabaseStatusBanner />
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">

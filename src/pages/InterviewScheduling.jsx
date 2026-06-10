@@ -6,12 +6,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Clock, Video, Phone, MapPin, Plus, Trash2, CheckCircle, X, User, Send, Bell } from 'lucide-react';
+import { useDemoPreview } from '@/lib/DemoPreviewContext';
 
 const locationTypeIcon = { video: Video, phone: Phone, in_person: MapPin };
 const locationTypeLabel = { video: 'Video Call', phone: 'Phone Call', in_person: 'In Person' };
 const formatDate = (d) => new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
 export default function InterviewScheduling() {
+  const { previewMode } = useDemoPreview();
   const [user, setUser] = useState(null);
   const [userType, setUserType] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -37,7 +39,7 @@ export default function InterviewScheduling() {
     location_type: 'video', meeting_link: '', job_id: '', notes: ''
   });
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); }, [previewMode]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -48,6 +50,48 @@ export default function InterviewScheduling() {
       base44.entities.StudentProfile.filter({ created_by: u.email }),
       base44.entities.RecruiterProfile.filter({ created_by: u.email })
     ]);
+
+    if (u.role === 'admin' && previewMode === 'student') {
+      setUserType('student');
+      setProfile(sp[0] || { id: 'preview', full_name: u.full_name || 'Demo candidate' });
+      const [myBookings, myRequests] = await Promise.all([
+        base44.entities.InterviewBooking.filter({ student_email: u.email }),
+        base44.entities.InterviewRequest.filter({ student_email: u.email })
+      ]);
+      setBookings(myBookings);
+      setInterviewRequests(myRequests);
+      setLoading(false);
+      return;
+    }
+
+    if (u.role === 'admin' && previewMode === 'recruiter') {
+      setUserType('recruiter');
+      if (rp.length > 0) {
+        setProfile(rp[0]);
+        const [mySlots, myJobs, myBookings, myShortlists] = await Promise.all([
+          base44.entities.InterviewSlot.filter({ recruiter_email: u.email }),
+          base44.entities.Job.filter({ created_by: u.email, status: 'active' }),
+          base44.entities.InterviewBooking.filter({ recruiter_email: u.email }),
+          base44.entities.Shortlist.filter({ created_by: u.email })
+        ]);
+        setSlots(mySlots.sort((a, b) => a.date.localeCompare(b.date)));
+        setJobs(myJobs);
+        setBookings(myBookings);
+        const uniqueEmails = [...new Set(myShortlists.map(s => s.student_email))];
+        setShortlistedStudents(uniqueEmails.map(email => {
+          const sl = myShortlists.find(s => s.student_email === email);
+          return { email, job_id: sl?.job_id };
+        }));
+      } else {
+        setProfile({ id: 'preview', full_name: u.full_name || 'Demo recruiter', company: 'Demo Company' });
+        setSlots([]);
+        setJobs([]);
+        setBookings([]);
+        setShortlistedStudents([]);
+      }
+      setLoading(false);
+      return;
+    }
 
     if (sp.length > 0) {
       setUserType('student');
@@ -76,6 +120,14 @@ export default function InterviewScheduling() {
         const sl = myShortlists.find(s => s.student_email === email);
         return { email, job_id: sl?.job_id };
       }));
+    } else {
+      setUserType(null);
+      setProfile(null);
+      setSlots([]);
+      setJobs([]);
+      setBookings([]);
+      setInterviewRequests([]);
+      setShortlistedStudents([]);
     }
     setLoading(false);
   };
@@ -185,6 +237,24 @@ export default function InterviewScheduling() {
       <div className="w-6 h-6 border-2 border-[#5BA4C4] border-t-transparent rounded-full animate-spin" />
     </div>
   );
+
+  if (user?.role === 'admin' && previewMode === 'off' && userType === null) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-6">
+        <p className="text-[#3D87AA] text-center max-w-sm font-medium">
+          Open the <strong>Demo</strong> bar and switch to <strong>Candidate UI</strong> or <strong>Recruiter UI</strong> to preview this screen.
+        </p>
+      </div>
+    );
+  }
+
+  if (userType === null) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-6 text-slate-600 text-center">
+        Interviews are available once you have a candidate or recruiter profile.
+      </div>
+    );
+  }
 
   // ── STUDENT VIEW ──
   if (userType === 'student') {

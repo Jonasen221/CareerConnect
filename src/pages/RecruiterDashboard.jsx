@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Users, Briefcase, Calendar, ArrowRight, Star, Clock, AlertCircle } from 'lucide-react';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import DashboardCalendar from '../components/calendar/DashboardCalendar';
+import { useDemoPreview } from '@/lib/DemoPreviewContext';
 
 export default function RecruiterDashboard() {
+  const { skipApprovalGates } = useDemoPreview();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ jobs: 0, shortlists: 0, matches: 0, messages: 0 });
@@ -50,13 +52,13 @@ export default function RecruiterDashboard() {
     <div className="min-h-screen bg-[#E8E4DF] dark:bg-slate-900">
       <div className="bg-gradient-to-r from-[#3D87AA] via-[#4a90b0] to-[#5BA4C4] px-6 pt-8 pb-16">
         <div className="max-w-5xl mx-auto">
-          {profile?.status === 'pending' &&
+          {!skipApprovalGates && profile?.status === 'pending' &&
             <div className="mb-4 p-3 bg-blue-500/30 border border-blue-200/50 rounded-2xl flex items-center gap-3">
               <Clock className="w-5 h-5 text-white flex-shrink-0" />
               <div><p className="font-semibold text-white text-sm">Account under review</p><p className="text-xs text-white/80">You can still browse and shortlist candidates while we verify your details.</p></div>
             </div>
             }
-          {profile?.status === 'rejected' &&
+          {!skipApprovalGates && profile?.status === 'rejected' &&
             <div className="mb-4 p-3 bg-red-500/30 border border-red-200/50 rounded-2xl flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />
               <p className="text-white text-sm">Your application was not approved. Contact support.</p>

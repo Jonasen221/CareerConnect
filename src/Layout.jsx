@@ -8,9 +8,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import BottomTabNav from './components/layout/BottomTabNav';
 import SubscriptionGate from './components/subscriptions/SubscriptionGate';
 import RecruiterBottomTabNav from './components/layout/RecruiterBottomTabNav';
+import { ADMIN_DEMO_LAYOUT_PADDING_CLASS } from '@/components/admin/AdminDemoBar';
+import { useDemoPreview } from '@/lib/DemoPreviewContext';
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
+  const { previewMode } = useDemoPreview();
   const [user, setUser] = useState(null);
   const [userType, setUserType] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -97,7 +100,12 @@ export default function Layout({ children, currentPageName }) {
     { label: 'Integrations', icon: Zap, page: 'IntegrationsHub' },
   ];
 
-  const navItems = userType === 'student' ? studentNav : userType === 'recruiter' ? recruiterNav : userType === 'admin' ? adminNav : [];
+  const effectiveUserType =
+    user?.role === 'admin' && (previewMode === 'student' || previewMode === 'recruiter')
+      ? previewMode
+      : userType;
+
+  const navItems = effectiveUserType === 'student' ? studentNav : effectiveUserType === 'recruiter' ? recruiterNav : effectiveUserType === 'admin' ? adminNav : [];
 
   const navigate = useNavigate();
 
@@ -117,8 +125,8 @@ export default function Layout({ children, currentPageName }) {
   // Subscription gate for non-admin users (enabled from July 2026 onwards)
   const subscriptionGateDate = new Date('2026-07-01');
   const isSubscriptionGateActive = new Date() >= subscriptionGateDate;
-  if (isSubscriptionGateActive && hasSubscription === false && (userType === 'student' || userType === 'recruiter')) {
-    return <SubscriptionGate userType={userType} onSubscribed={() => setHasSubscription(true)} />;
+  if (isSubscriptionGateActive && user?.role !== 'admin' && hasSubscription === false && (effectiveUserType === 'student' || effectiveUserType === 'recruiter')) {
+    return <SubscriptionGate userType={effectiveUserType} onSubscribed={() => setHasSubscription(true)} />;
   }
 
   if (!userType) return (
@@ -131,12 +139,12 @@ export default function Layout({ children, currentPageName }) {
     </div>
   );
 
-  const isStudentPage = userType === 'student';
-  const isRecruiterPage = userType === 'recruiter';
+  const isStudentPage = effectiveUserType === 'student';
+  const isRecruiterPage = effectiveUserType === 'recruiter';
 
   const initials = user?.full_name?.split(' ').map(n => n?.[0]).join('').toUpperCase().slice(0, 2) || 'U';
-  const typeBadge = userType === 'student' ? 'bg-[#EAF5FB] text-[#3D87AA]' : userType === 'recruiter' ? 'bg-[#EAF5FB] text-[#3D87AA]' : 'bg-slate-50 text-slate-700';
-  const typeLabel = userType === 'student' ? '🎓 Candidate' : userType === 'recruiter' ? '💼 Recruiter' : '⚙ Admin';
+  const typeBadge = effectiveUserType === 'student' ? 'bg-[#EAF5FB] text-[#3D87AA]' : effectiveUserType === 'recruiter' ? 'bg-[#EAF5FB] text-[#3D87AA]' : 'bg-slate-50 text-slate-700';
+  const typeLabel = effectiveUserType === 'student' ? '🎓 Candidate' : effectiveUserType === 'recruiter' ? '💼 Recruiter' : '⚙ Admin';
 
   const NavItem = ({ item }) => {
     const Icon = item.icon;
@@ -151,7 +159,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className={`flex min-h-screen bg-slate-50 dark:bg-slate-900 ${user?.role === 'admin' ? ADMIN_DEMO_LAYOUT_PADDING_CLASS : ''}`}>
       <style>{`
         :root {
           --brand: #5BA4C4;
@@ -198,7 +206,7 @@ export default function Layout({ children, currentPageName }) {
             <div><span className="text-base font-bold text-slate-800 dark:text-slate-100">Career</span><span className="text-base font-bold text-[#5BA4C4]">Connect</span></div>
           </Link>
         </div>
-        {userType && <div className="px-6 pt-4 pb-1"><span className={`text-xs font-semibold uppercase tracking-widest px-2.5 py-1 rounded-lg ${typeBadge}`}>{typeLabel}</span></div>}
+        {effectiveUserType && <div className="px-6 pt-4 pb-1"><span className={`text-xs font-semibold uppercase tracking-widest px-2.5 py-1 rounded-lg ${typeBadge}`}>{typeLabel}</span></div>}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
           {navItems.map(item => <NavItem key={item.page} item={item} />)}
         </nav>
@@ -274,7 +282,14 @@ export default function Layout({ children, currentPageName }) {
             style={{ willChange: 'transform' }}
           >
             {children}
-            {(isStudentPage || isRecruiterPage) && <div className="lg:hidden" style={{ height: 'calc(56px + env(safe-area-inset-bottom, 0px))' }} />}
+            {(isStudentPage || isRecruiterPage) && (
+              <div
+                className="lg:hidden"
+                style={{
+                  height: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+                }}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </main>

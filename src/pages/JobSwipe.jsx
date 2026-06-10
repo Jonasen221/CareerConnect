@@ -8,9 +8,12 @@ import JobCompare from '../components/jobs/JobCompare';
 import { Link, Navigate } from 'react-router-dom';
 import PullToRefresh from '../components/layout/PullToRefresh';
 import AIJobMatcher from '../components/jobs/AIJobMatcher';
+import { useDemoPreview } from '@/lib/DemoPreviewContext';
 
 const SUBSCRIPTION_LIVE = new Date() >= new Date('2026-09-01');
 const FREE_DAILY_SWIPES = 3;
+/** When subscriptions enforce limits, match marketed tiers (student job swipe). */
+const TIER_DAILY_SWIPES_LIVE = { free: 2, bronze: 2, silver: 3, gold: 10 };
 
 const SwipeCard = React.forwardRef(({ job, onSwipe, profile }, ref) => {
   const [dragX, setDragX] = useState(0);
@@ -105,11 +108,12 @@ const SwipeCard = React.forwardRef(({ job, onSwipe, profile }, ref) => {
 });
 
 export default function JobSwipe() {
+  const { previewMode, skipProfileGates } = useDemoPreview();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [swipes, setSwipes] = useState([]);
+  const [_swipes, setSwipes] = useState([]);
   const [saved, setSaved] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userType, setUserType] = useState(null);
@@ -123,7 +127,7 @@ export default function JobSwipe() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [previewMode]);
 
   const loadData = async () => {
     const u = await base44.auth.me();
@@ -137,16 +141,44 @@ export default function JobSwipe() {
     base44.entities.Subscription.filter({ created_by: u.email })]
     );
 
-    if (studentProfiles.length > 0) {
+    if (u.role === 'admin' && previewMode === 'student') {
+      setUserType('student');
+      const sp = studentProfiles[0];
+      setProfile(
+        sp ||
+        (skipProfileGates
+          ? { id: 'preview', major: '', skills: [], resume_url: 'demo', intro_video_url: 'demo' }
+          : null)
+      );
+      setJobs(allJobs);
+      if (SUBSCRIPTION_LIVE) {
+        const rawSub = subs[0] || { tier: 'free' };
+        const sub = { ...rawSub, daily_swipes: TIER_DAILY_SWIPES_LIVE[rawSub.tier] ?? 2 };
+        setSubscription(sub);
+      } else {
+        setSubscription({ tier: 'free', daily_swipes: FREE_DAILY_SWIPES });
+      }
+      const today = new Date().toISOString().split('T')[0];
+      const todayCount = userSwipes.filter((s) => s.created_date?.startsWith(today)).length;
+      setTodaySwipes(todayCount);
+      setRecruiterProfile(null);
+    } else if (u.role === 'admin' && previewMode === 'recruiter') {
+      setUserType('recruiter');
+      const rp = recruiterProfiles[0];
+      const recruiterJobs = rp ? allJobs.filter((j) => j.created_by === u.email) : allJobs;
+      setRecruiterProfile(rp || (skipProfileGates ? { id: 'preview', company: 'Demo Company' } : null));
+      setJobs(recruiterJobs.length > 0 ? recruiterJobs : allJobs);
+      setProfile(null);
+      setSubscription(null);
+    } else if (studentProfiles.length > 0) {
       setUserType('student');
       setProfile(studentProfiles[0]);
       setJobs(allJobs);
 
       // If subscriptions are live, use tier-based limits; otherwise flat 3/day for everyone
       if (SUBSCRIPTION_LIVE) {
-        const swipesMap = { free: 2, bronze: 5, silver: 15, gold: -1 };
         const rawSub = subs[0] || { tier: 'free' };
-        const sub = { ...rawSub, daily_swipes: swipesMap[rawSub.tier] ?? 2 };
+        const sub = { ...rawSub, daily_swipes: TIER_DAILY_SWIPES_LIVE[rawSub.tier] ?? 2 };
         setSubscription(sub);
       } else {
         setSubscription({ tier: 'free', daily_swipes: FREE_DAILY_SWIPES });
@@ -155,11 +187,20 @@ export default function JobSwipe() {
       const today = new Date().toISOString().split('T')[0];
       const todayCount = userSwipes.filter((s) => s.created_date?.startsWith(today)).length;
       setTodaySwipes(todayCount);
+      setRecruiterProfile(null);
     } else if (recruiterProfiles.length > 0) {
       setUserType('recruiter');
       setRecruiterProfile(recruiterProfiles[0]);
       const recruiterJobs = allJobs.filter((j) => j.created_by === u.email);
       setJobs(recruiterJobs);
+      setProfile(null);
+      setSubscription(null);
+    } else {
+      setUserType(null);
+      setProfile(null);
+      setRecruiterProfile(null);
+      setJobs([]);
+      setSubscription(null);
     }
 
     setSwipes(userSwipes);
@@ -182,24 +223,33 @@ export default function JobSwipe() {
     setCurrentIndex((prev) => prev + 1);
     setTodaySwipes((prev) => prev + 1);
 
-    // Fire-and-forget API call
-    base44.entities.Swipe.create({ job_id: job.id, direction });
+    // Fire-and-forget API call (skip when using a local demo stub row)
+    const skipPersist =
+      (userType === 'student' && profile?.id === 'preview') ||
+      (userType === 'recruiter' && recruiterProfile?.id === 'preview');
+    if (!skipPersist) {
+      base44.entities.Swipe.create({ job_id: job.id, direction });
+    }
   };
 
   const toggleSave = async () => {
     const job = jobs[currentIndex];
     if (!job) return;
 
-    const alreadySaved = saved.find((s) => s.job_id === job.id);
+    const skipPersistShortlist = profile?.id === 'preview';
     if (alreadySaved) {
       // Optimistic
       setSaved((prev) => prev.filter((s) => s.job_id !== job.id));
-      base44.entities.Shortlist.delete(alreadySaved.id);
+      if (!skipPersistShortlist && alreadySaved.id && !String(alreadySaved.id).startsWith('optimistic-')) {
+        base44.entities.Shortlist.delete(alreadySaved.id);
+      }
     } else {
       // Optimistic
       const optimistic = { job_id: job.id, student_email: user.email, id: `optimistic-${Date.now()}` };
       setSaved((prev) => [...prev, optimistic]);
-      base44.entities.Shortlist.create({ student_email: user.email, job_id: job.id });
+      if (!skipPersistShortlist) {
+        base44.entities.Shortlist.create({ student_email: user.email, job_id: job.id });
+      }
     }
   };
 
@@ -211,7 +261,17 @@ export default function JobSwipe() {
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-[#5BA4C4] border-t-transparent rounded-full animate-spin" /></div>;
 
-  if (userType === 'student' && !profile) {
+  if (user?.role === 'admin' && previewMode === 'off' && userType === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#EAF5FB]">
+        <p className="text-[#3D87AA] text-center max-w-sm font-medium">
+          Use the <strong>Demo</strong> bar at the bottom and choose <strong>Candidate UI</strong> or <strong>Recruiter UI</strong> to explore job swiping as that role.
+        </p>
+      </div>
+    );
+  }
+
+  if (!skipProfileGates && userType === 'student' && !profile) {
     return (
       <div className="min-h-screen bg-[#EAF5FB] flex items-center justify-center p-4">
         <div className="text-center">
@@ -221,7 +281,7 @@ export default function JobSwipe() {
       </div>);
   }
 
-  if (userType === 'student' && profile && (!profile.resume_url || !profile.intro_video_url)) {
+  if (!skipProfileGates && userType === 'student' && profile && (!profile.resume_url || !profile.intro_video_url)) {
     return (
       <div className="min-h-screen bg-[#EAF5FB] flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
@@ -245,7 +305,7 @@ export default function JobSwipe() {
       </div>);
   }
 
-  if (userType === 'recruiter' && !recruiterProfile) {
+  if (!skipProfileGates && userType === 'recruiter' && !recruiterProfile) {
     return (
       <div className="min-h-screen bg-[#EAF5FB] flex items-center justify-center p-4">
         <div className="text-center">

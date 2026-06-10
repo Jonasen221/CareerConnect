@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, MapPin, Users, Plus, Lock, Globe, CheckCircle, X, Pencil, Download, CalendarPlus, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useDemoPreview } from '@/lib/DemoPreviewContext';
 
 const EVENT_TYPES = [{ value: "panel", label: "Panel" }, { value: "company_visit", label: "Company Visit" }, { value: "career_fair", label: "Career Fair" }, { value: "workshop", label: "Workshop" }, { value: "networking", label: "Networking" }, { value: "other", label: "Other" }];
 const TYPE_STYLE = { panel: 'bg-[#EAF5FB] text-[#3D87AA]', company_visit: 'bg-[#EAF5FB] text-[#2d6d8e]', career_fair: 'bg-[#d4ead4] text-[#2d6e2d]', workshop: 'bg-[#fef3cd] text-[#7a5c1e]', networking: 'bg-[#fde4e4] text-[#7a2d2d]', other: 'bg-[#E8E4DF] text-[#7A7870]' };
 
 export default function EventsPage() {
+  const { previewMode, skipProfileGates } = useDemoPreview();
   const [user, setUser] = useState(null);
   const [userType, setUserType] = useState(null);
   const [events, setEvents] = useState([]);
@@ -27,7 +29,7 @@ export default function EventsPage() {
   const [addingToGCal, setAddingToGCal] = useState(null);
   const [formData, setFormData] = useState({ title: '', company: '', description: '', event_type: 'panel', access_type: 'open', date: '', time: '', end_time: '', location: '', max_attendees: '' });
 
-  useEffect(() => {loadData();}, []);
+  useEffect(() => {loadData();}, [previewMode]);
 
   const loadData = async () => {
     const u = await base44.auth.me();
@@ -36,7 +38,10 @@ export default function EventsPage() {
     base44.entities.StudentProfile.filter({ created_by: u.email }),
     base44.entities.RecruiterProfile.filter({ created_by: u.email })]
     );
-    const type = u.role === 'admin' ? 'admin' : sp.length > 0 ? 'student' : rp.length > 0 ? 'recruiter' : null;
+    let type = u.role === 'admin' ? 'admin' : sp.length > 0 ? 'student' : rp.length > 0 ? 'recruiter' : null;
+    if (u.role === 'admin' && previewMode === 'student') type = 'student';
+    if (u.role === 'admin' && previewMode === 'recruiter') type = 'recruiter';
+    if (u.role === 'admin' && previewMode === 'off') type = 'admin';
     setUserType(type);
 
     const [allEvents, myRsvps, myInvites, myProgress] = await Promise.all([
@@ -61,7 +66,7 @@ export default function EventsPage() {
       base44.entities.EventRSVP.delete(existing.id);
     } else {
       const currentXP = gameProgress?.total_xp || 0;
-      if (currentXP < XP_PER_RSVP) {
+      if (!skipProfileGates && currentXP < XP_PER_RSVP) {
         alert(`You need ${XP_PER_RSVP} XP to RSVP to an event. You have ${currentXP} XP. Play games in Career Arena to earn more XP!`);
         return;
       }

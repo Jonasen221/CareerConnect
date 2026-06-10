@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Save, X, CheckCircle, Clock, AlertCircle, Link as LinkIcon, GraduationCap, MapPin, ArrowLeft, Trash2, Mail, Phone, Video, FileText, Upload } from 'lucide-react';
+import { useDemoPreview } from '@/lib/DemoPreviewContext';
 
 const SKILLS = ["Python","JavaScript","React","SQL","Data Analysis","Machine Learning","Finance","Marketing","Accounting","Excel","Project Management","Leadership","Research","Statistics","Java","Product Management","Sales","Communication","Business Development","Consulting"];
 const WORK_PREFS = [{ value: "full_time", label: "Full-time" },{ value: "part_time", label: "Part-time" },{ value: "internship", label: "Internship" },{ value: "remote", label: "Remote" },{ value: "hybrid", label: "Hybrid" },{ value: "on_site", label: "On-site" }];
@@ -18,6 +19,7 @@ const COUNTRIES = ["United States", "United Kingdom", "Canada", "Australia", "Ge
 
 export default function StudentProfilePage() {
   const navigate = useNavigate();
+  const { skipProfileGates, skipApprovalGates } = useDemoPreview();
   const [profile, setProfile] = useState(null);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({});
@@ -26,23 +28,52 @@ export default function StudentProfilePage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  useEffect(() => { loadProfile(); }, []);
+  useEffect(() => { loadProfile(); }, [skipProfileGates]);
 
   const loadProfile = async () => {
     const u = await base44.auth.me();
     const profiles = await base44.entities.StudentProfile.filter({ created_by: u.email });
-    if (profiles.length > 0) { setProfile(profiles[0]); setFormData(profiles[0]); }
-    else navigate(createPageUrl('Onboarding'));
+    if (profiles.length > 0) {
+      setProfile(profiles[0]);
+      setFormData(profiles[0]);
+    } else if (u.role === 'admin' || skipProfileGates) {
+      const demo = {
+        id: 'preview',
+        full_name: u.full_name || 'Demo candidate',
+        status: 'approved',
+        university: 'Sample University',
+        major: 'Business Administration',
+        graduation_year: new Date().getFullYear() + 1,
+        location: 'Zurich, CH',
+        nationality: 'Switzerland',
+        bio: 'Preview profile — data is not saved until you create a real candidate profile.',
+        skills: ['Communication', 'Excel'],
+        work_preferences: ['internship'],
+        industries: ['Finance'],
+        languages: ['English', 'German'],
+        resume_url: null,
+        intro_video_url: null,
+        photo_url: null,
+        linkedin_url: '',
+        phone: '',
+      };
+      setProfile(demo);
+      setFormData(demo);
+    } else {
+      navigate(createPageUrl('Onboarding'));
+    }
     setLoading(false);
   };
 
   const handleSave = async () => {
+    if (profile?.id === 'preview') return;
     setSaving(true);
     const updated = await base44.entities.StudentProfile.update(profile.id, formData);
     setProfile(updated); setEditing(false); setSaving(false);
   };
 
   const handleDeleteAccount = async () => {
+    if (profile?.id === 'preview') return;
     setDeletingAccount(true);
     await base44.entities.StudentProfile.delete(profile.id);
     base44.auth.logout('/');
@@ -51,6 +82,7 @@ export default function StudentProfilePage() {
   const [cvUploading, setCvUploading] = useState(false);
 
   const handleCvUpload = async (e) => {
+    if (profile?.id === 'preview') return;
     const file = e.target.files[0];
     if (!file) return;
     setCvUploading(true);
@@ -97,7 +129,6 @@ export default function StudentProfilePage() {
   if (!profile) return null;
 
   const initials = profile.full_name?.split(' ').map(n => n?.[0]).join('').toUpperCase().slice(0, 2) || 'S';
-  const photoUrl = profile.photo_url || null;
   const statusConfig = {
     pending: { icon: Clock, banner: 'bg-amber-50 border-amber-200', iconCls: 'text-amber-600', textCls: 'text-amber-800', subCls: 'text-amber-600', label: 'Pending Review', desc: 'Your profile is being reviewed by our team' },
     approved: { icon: CheckCircle, banner: 'bg-green-50 border-green-200', iconCls: 'text-green-600', textCls: 'text-green-800', subCls: 'text-green-600', label: 'Profile Approved', desc: 'Your candidate profile is live and visible to recruiters' },
@@ -105,6 +136,7 @@ export default function StudentProfilePage() {
   };
   const sc = statusConfig[profile.status] || statusConfig.pending;
   const StatusIcon = sc.icon;
+  const showApprovalStatusBanner = !skipApprovalGates || profile.status === 'approved';
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -130,10 +162,12 @@ export default function StudentProfilePage() {
       </div>
       <div className="max-w-3xl mx-auto px-6 -mt-8">
 
+      {showApprovalStatusBanner && (
       <div className={`mb-6 p-4 rounded-2xl flex items-center gap-3 border ${sc.banner}`}>
         <StatusIcon className={`w-5 h-5 flex-shrink-0 ${sc.iconCls}`} />
         <div><p className={`font-semibold text-sm ${sc.textCls}`}>{sc.label}</p><p className={`text-xs ${sc.subCls}`}>{sc.desc}</p></div>
       </div>
+      )}
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-br from-[#5BA4C4] via-[#4a90b0] to-[#3D87AA] p-8">

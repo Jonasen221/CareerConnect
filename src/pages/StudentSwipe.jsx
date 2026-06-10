@@ -7,8 +7,10 @@ import { X, Star, Users, MessageCircle } from 'lucide-react';
 import MobileSelect from '../components/layout/MobileSelect';
 import { motion, AnimatePresence } from 'framer-motion';
 import StudentSwipeCard from '../components/students/StudentSwipeCard';
+import { useDemoPreview } from '@/lib/DemoPreviewContext';
 
 export default function StudentSwipe() {
+  const { skipApprovalGates } = useDemoPreview();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [jobs, setJobs] = useState([]);
@@ -109,7 +111,7 @@ export default function StudentSwipe() {
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="w-6 h-6 border-2 border-[#5BA4C4] border-t-transparent rounded-full animate-spin" /></div>;
 
-  if (profile?.status !== 'approved') return (
+  if (!skipApprovalGates && profile?.status !== 'approved') return (
     <div className="flex items-center justify-center min-h-screen p-6">
       <div className="text-center max-w-sm">
         <Users className="w-12 h-12 text-slate-200 mx-auto mb-4" />

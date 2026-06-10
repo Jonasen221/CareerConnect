@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -35,7 +35,22 @@ const STUDENT_PLANS = [
       { text: 'Priority profile review', included: true },
       { text: 'Exclusive events access', included: true },
       { text: 'Direct message priority', included: true },
-      { text: 'Cover letter & multinational CV service', included: true },
+    ],
+  },
+  {
+    tier: 'gold',
+    name: 'Elite',
+    basePrice: 39.95,
+    price: '€39.95',
+    period: '/mo',
+    swipes: 10,
+    badge: 'Premium',
+    features: [
+      { text: 'Everything in Global', included: true },
+      { text: '10 swipes per day', included: true },
+      { text: 'Featured profile', included: true },
+      { text: '1-on-1 coaching w/ Franzi', included: true },
+      { text: 'Full CV + LinkedIn + prep', included: true },
     ],
   },
 ];
@@ -154,6 +169,23 @@ export default function SubscriptionModal({ open, onOpenChange, currentTier, onS
   const [activeTab, setActiveTab] = useState(userType);
   const plans = getPlans(activeTab);
 
+  useEffect(() => {
+    if (!open) return;
+    let tier = null;
+    try {
+      tier = sessionStorage.getItem('cc_subscribe_tier');
+      if (tier) sessionStorage.removeItem('cc_subscribe_tier');
+    } catch {
+      return;
+    }
+    if (!tier || userType !== 'student') return;
+    if (!['bronze', 'silver', 'gold'].includes(tier) || tier === currentTier) return;
+    setActiveTab('student');
+    const plan = STUDENT_PLANS.find((p) => p.tier === tier);
+    if (!plan || plan.basePrice === 0) return;
+    setSelectedForPayment({ tier, plan });
+  }, [open, userType, currentTier]);
+
   const handleSubscribe = async (tier) => {
     if (tier === currentTier) return;
 
@@ -243,14 +275,16 @@ export default function SubscriptionModal({ open, onOpenChange, currentTier, onS
           </button>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4 mt-4 max-w-2xl mx-auto">
+        <div className={`grid gap-4 mt-4 mx-auto ${activeTab === 'student' ? 'md:grid-cols-3 max-w-5xl' : 'md:grid-cols-2 max-w-2xl'}`}>
           {plans.map((plan) => (
             <motion.div key={plan.tier} whileHover={{ y: -4 }} className="relative">
               <div className={`rounded-2xl border-2 overflow-hidden transition-all h-full flex flex-col ${
                 plan.badge === 'Most Popular'
                   ? 'border-[#5BA4C4] shadow-lg'
-                  : plan.badge === 'Best Value'
+                  : plan.badge === 'Best Value' || plan.badge === 'Premium'
                   ? 'border-[#2E3F4F]'
+                  : plan.tier === 'gold'
+                  ? 'border-[#0f172a] shadow-xl'
                   : 'border-slate-200 bg-white hover:border-[#5BA4C4]'
               } ${plan.tier === currentTier ? 'ring-2 ring-[#5BA4C4]' : ''}`}>
                 {plan.badge && (
@@ -281,6 +315,8 @@ export default function SubscriptionModal({ open, onOpenChange, currentTier, onS
                     className={`w-full h-10 font-bold flex items-center justify-center gap-2 ${
                       plan.tier === currentTier
                         ? 'bg-slate-200 text-slate-500 cursor-default'
+                        : plan.tier === 'gold'
+                        ? 'bg-[#152B45] hover:bg-[#0f172a] text-white'
                         : plan.badge === 'Most Popular'
                         ? 'bg-[#5BA4C4] hover:bg-[#3D87AA] text-white'
                         : 'bg-[#EAF5FB] hover:bg-[#A8D4E8]/60 text-[#3D87AA]'

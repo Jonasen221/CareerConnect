@@ -7,9 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Pencil, Save, X, CheckCircle, Clock, AlertCircle, Link as LinkIcon, Building2, ArrowLeft, Trash2, Mail, Phone } from 'lucide-react';
+import { useDemoPreview } from '@/lib/DemoPreviewContext';
 
 export default function RecruiterProfilePage() {
   const navigate = useNavigate();
+  const { skipProfileGates, skipApprovalGates } = useDemoPreview();
   const [profile, setProfile] = useState(null);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({});
@@ -18,22 +20,44 @@ export default function RecruiterProfilePage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  useEffect(() => { loadProfile(); }, []);
+  useEffect(() => { loadProfile(); }, [skipProfileGates]);
 
   const loadProfile = async () => {
     const u = await base44.auth.me();
     const profiles = await base44.entities.RecruiterProfile.filter({ created_by: u.email });
-    if (profiles.length > 0) { setProfile(profiles[0]); setFormData(profiles[0]); }
+    if (profiles.length > 0) {
+      setProfile(profiles[0]);
+      setFormData(profiles[0]);
+    } else if (u.role === 'admin' || skipProfileGates) {
+      const demo = {
+        id: 'preview',
+        full_name: u.full_name || 'Demo recruiter',
+        status: 'approved',
+        company: 'Acme Talent',
+        title: 'Talent Partner',
+        bio: 'Preview profile — create a real recruiter profile to publish changes.',
+        photo_url: null,
+        linkedin_url: '',
+        phone: '',
+        company_website: '',
+      };
+      setProfile(demo);
+      setFormData(demo);
+    } else {
+      setProfile(null);
+    }
     setLoading(false);
   };
 
   const handleSave = async () => {
+    if (profile?.id === 'preview') return;
     setSaving(true);
     const updated = await base44.entities.RecruiterProfile.update(profile.id, formData);
     setProfile(updated); setEditing(false); setSaving(false);
   };
 
   const handleDeleteAccount = async () => {
+    if (profile?.id === 'preview') return;
     setDeletingAccount(true);
     await base44.entities.RecruiterProfile.delete(profile.id);
     base44.auth.logout('/');
@@ -54,6 +78,7 @@ export default function RecruiterProfilePage() {
   };
   const sc = statusConfig[profile.status] || statusConfig.pending;
   const StatusIcon = sc.icon;
+  const showApprovalStatusBanner = !skipApprovalGates || profile.status === 'approved';
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -79,10 +104,12 @@ export default function RecruiterProfilePage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-6 -mt-8">
+        {showApprovalStatusBanner && (
         <div className={`mb-6 p-4 rounded-2xl flex items-center gap-3 border ${sc.banner}`}>
           <StatusIcon className={`w-5 h-5 flex-shrink-0 ${sc.iconCls}`} />
           <div><p className={`font-semibold text-sm ${sc.textCls}`}>{sc.label}</p><p className={`text-xs ${sc.subCls}`}>{sc.desc}</p></div>
         </div>
+        )}
 
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="bg-gradient-to-br from-[#3D87AA] via-[#4a90b0] to-[#5BA4C4] p-8">

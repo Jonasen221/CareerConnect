@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { formatAuthFlowError } from '@/lib/formatAuthFlowError';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import SupabaseStatusBanner from '@/components/auth/SupabaseStatusBanner';
 
 export default function Login() {
   const { signInWithPassword, isAuthenticated, isLoadingAuth } = useAuth();
@@ -48,7 +52,7 @@ export default function Login() {
       // Post-sign-in navigation is handled by the useEffect that watches
       // `isAuthenticated` (so `?next=`, off-site, and /login are parsed safely).
     } catch (err) {
-      setError(err.message || 'Failed to sign in');
+      setError(formatAuthFlowError(err));
     } finally {
       setLoading(false);
     }
@@ -64,6 +68,15 @@ export default function Login() {
           <h1 className="text-2xl font-semibold text-slate-800">Welcome back</h1>
           <p className="text-sm text-slate-500">Sign in to CareerConnect</p>
         </div>
+
+        {!isSupabaseConfigured && (
+          <div className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <strong>Supabase is not configured.</strong> Copy <code className="text-xs">.env.example</code> to{' '}
+            <code className="text-xs">.env.local</code>, add your project URL and anon key, then restart the dev server.
+          </div>
+        )}
+
+        <SupabaseStatusBanner />
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">

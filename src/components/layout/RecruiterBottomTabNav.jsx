@@ -18,7 +18,7 @@ const MORE_ITEMS = [
 
 const scrollPositions = {};
 
-export default function RecruiterBottomTabNav({ currentPageName }) {
+export default function RecruiterBottomTabNav({ currentPageName, bottomOffsetPx = 0 }) {
   const navigate = useNavigate();
   const [showMore, setShowMore] = useState(false);
 
@@ -35,8 +35,11 @@ export default function RecruiterBottomTabNav({ currentPageName }) {
     <>
       {showMore && (
         <div className="lg:hidden fixed inset-0 z-40" onClick={() => setShowMore(false)}>
-          <div className="absolute bottom-[calc(56px+env(safe-area-inset-bottom,0px))] left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 shadow-xl rounded-t-2xl p-4"
-            onClick={e => e.stopPropagation()}>
+          <div
+            className="absolute left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 shadow-xl rounded-t-2xl p-4"
+            style={{ bottom: `calc(56px + env(safe-area-inset-bottom, 0px) + ${bottomOffsetPx}px)` }}
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">More</span>
               <button onClick={() => setShowMore(false)} className="p-1 rounded-full hover:bg-slate-100">
@@ -60,8 +63,13 @@ export default function RecruiterBottomTabNav({ currentPageName }) {
         </div>
       )}
 
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 flex items-center justify-around select-none"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)', height: 'calc(56px + env(safe-area-inset-bottom, 0px))' }}>
+      <nav className="lg:hidden fixed left-0 right-0 z-50 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 flex items-center justify-around select-none"
+        style={{
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          bottom: bottomOffsetPx,
+          height: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+        }}
+      >
         {MAIN_TABS.map(({ label, icon: Icon, page }) => {
           const isActive = currentPageName === page;
           return (

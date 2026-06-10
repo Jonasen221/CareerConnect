@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Zap, Calendar, User, Star, ArrowRight, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import DashboardCalendar from '../components/calendar/DashboardCalendar';
 import AICVReview from '../components/dashboard/AICVReview';
+import { useDemoPreview } from '@/lib/DemoPreviewContext';
 
 export default function StudentDashboard() {
+  const { skipApprovalGates } = useDemoPreview();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ swipes: 0, matches: 0, events: 0, messages: 0 });
@@ -132,13 +134,13 @@ Return exactly 3 job picks.`,
       {/* Playful header banner */}
       <div className="bg-gradient-to-r from-[#5BA4C4] via-[#4a90b0] to-[#3D87AA] px-6 pt-8 pb-6">
         <div className="max-w-5xl mx-auto">
-          {profile?.status === 'pending' && (
+          {!skipApprovalGates && profile?.status === 'pending' && (
             <div className="mb-4 p-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl flex items-center gap-3">
               <Clock className="w-5 h-5 text-white flex-shrink-0" />
               <div><p className="font-semibold text-white text-sm">Profile under review</p><p className="text-xs text-white/80">Our team is reviewing your application. You'll get full access once approved.</p></div>
             </div>
           )}
-          {profile?.status === 'rejected' && (
+          {!skipApprovalGates && profile?.status === 'rejected' && (
             <div className="mb-4 p-3 bg-red-500/30 border border-red-200/50 rounded-2xl flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />
               <p className="text-white text-sm">Your application was not approved. Contact support for more information.</p>

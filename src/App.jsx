@@ -6,6 +6,8 @@ import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { DemoPreviewProvider } from '@/lib/DemoPreviewContext';
+import AdminDemoBar from '@/components/admin/AdminDemoBar';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
@@ -34,6 +36,7 @@ const AuthenticatedApp = () => {
   }
 
   return (
+    <>
     <Routes>
       {/* Public auth routes */}
       <Route path="/login" element={<Login />} />
@@ -59,6 +62,8 @@ const AuthenticatedApp = () => {
       ))}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
+    <AdminDemoBar />
+    </>
   );
 };
 
@@ -66,13 +71,15 @@ const AuthenticatedApp = () => {
 function App() {
   return (
     <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <NavigationTracker />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
+      <DemoPreviewProvider>
+        <QueryClientProvider client={queryClientInstance}>
+          <Router>
+            <NavigationTracker />
+            <AuthenticatedApp />
+          </Router>
+          <Toaster />
+        </QueryClientProvider>
+      </DemoPreviewProvider>
     </AuthProvider>
   )
 }

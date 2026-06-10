@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
-import { GraduationCap, Briefcase, Sparkles, Linkedin, ArrowRight, CheckCircle2, Users, Zap, MessageSquare, CalendarCheck, ShieldCheck, CreditCard } from 'lucide-react';
+import { GraduationCap, Briefcase, Sparkles, Linkedin, ArrowRight, CheckCircle2, Users, Zap, MessageSquare, CalendarCheck, ShieldCheck, CreditCard, Shield } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
 import SubscriptionModal from '@/components/subscriptions/SubscriptionModal';
@@ -22,38 +22,58 @@ const STUDENT_PLANS = [
     name: 'Industry Specific',
     price: '€14.95',
     period: '/mo',
-    features: ['Industry-specific job listings', '2 swipes per day', 'Profile visible to matched recruiters', 'Community events'],
-    highlight: false,
+    features: [
+      'Industry-specific listings',
+      '2 swipes/day',
+      'Profile visible to recruiters',
+      'Community events',
+    ],
+    variant: 'default',
     badge: null,
   },
   {
     name: 'Global',
     price: '€25.95',
     period: '/mo',
-    features: ['All industries access', '3 swipes per day', 'Priority profile review', 'Exclusive events access', 'Direct message priority'],
-    highlight: true,
-    badge: 'Best Value',
+    features: [
+      'All industries access',
+      '3 swipes/day',
+      'Priority profile review',
+      'Exclusive events',
+      'Direct message priority',
+    ],
+    variant: 'global',
+    badge: 'BEST VALUE',
+  },
+  {
+    name: 'Elite',
+    price: '€39.95',
+    period: '/mo',
+    features: [
+      'Everything in Global',
+      '10 swipes/day',
+      'Featured profile',
+      '1-on-1 coaching w/ Franzi',
+      'Full CV + LinkedIn + prep',
+    ],
+    variant: 'elite',
+    badge: 'PREMIUM',
   },
 ];
 
-const RECRUITER_PLANS = [
-  {
-    name: 'Industry Specific',
-    price: '€14.95',
-    period: '/mo',
-    features: ['Browse industry-specific talent', '2 swipes per day', 'Post job listings', 'Basic company profile'],
-    highlight: false,
-    badge: null,
-  },
-  {
-    name: 'Global',
-    price: '€25.95',
-    period: '/mo',
-    features: ['Access all student profiles', '3 swipes per day', 'Priority listing placement', 'Invite-only events access', 'Featured company profile'],
-    highlight: true,
-    badge: 'Best Value',
-  },
-];
+/** Single firm package — shown beside candidate tiers */
+const RECRUITER_FIRM_PACKAGE = {
+  sectionTitle: 'Recruiter — firm referral package',
+  name: 'Personalised pricing',
+  subtitle: 'Negotiated directly with your firm',
+  features: [
+    'Unlimited talent search & swipe',
+    'Priority candidate shortlisting',
+    'Branded company profile & job listings',
+    'Exclusive recruiter events',
+    'Dedicated account support',
+  ],
+};
 
 const FEATURES = [
   { icon: Zap, title: 'Swipe to Apply', desc: 'Browse curated jobs with a swipe. Like what you love, skip the rest — job hunting made effortless.' },
@@ -64,6 +84,19 @@ const FEATURES = [
   { icon: Briefcase, title: 'Recruiter Tools', desc: 'Post jobs, shortlist candidates, host events, and manage your entire pipeline in one place.' },
 ];
 
+/** Never block the marketing page forever if Supabase/network hangs */
+const FETCH_MS = 12_000;
+const LANDING_HARD_CAP_MS = 15_000;
+
+function withDeadline(promise, ms = FETCH_MS) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('request-timeout')), ms);
+    }),
+  ]);
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -71,19 +104,25 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [userType, setUserType] = useState(null);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [selectedTier, setSelectedTier] = useState(null);
   const [currentSubscription, setCurrentSubscription] = useState(null);
-  const [pricingTab, setPricingTab] = useState('student');
   const [counts, setCounts] = useState({ students: 0, recruiters: 0 });
+  /** Landing pricing: one pane at a time — student carousel vs recruiter firm package */
+  const [pricingAudience, setPricingAudience] = useState('student');
 
-  useEffect(() => { bootstrap(); }, []);
+  useEffect(() => {
+    const cap = setTimeout(() => setLoading(false), LANDING_HARD_CAP_MS);
+    bootstrap().finally(() => clearTimeout(cap));
+    return () => clearTimeout(cap);
+  }, []);
 
   const loadCounts = async () => {
     try {
-      const [students, recruiters] = await Promise.all([
-        base44.entities.StudentProfile.filter({ status: 'approved' }),
-        base44.entities.RecruiterProfile.filter({ status: 'approved' }),
-      ]);
+      const [students, recruiters] = await withDeadline(
+        Promise.all([
+          base44.entities.StudentProfile.filter({ status: 'approved' }),
+          base44.entities.RecruiterProfile.filter({ status: 'approved' }),
+        ])
+      );
       setCounts({ students: students.length, recruiters: recruiters.length });
     } catch {
       setCounts({ students: 0, recruiters: 0 });
@@ -93,15 +132,17 @@ export default function Home() {
   const bootstrap = async () => {
     try {
       try {
-        const isAuth = await base44.auth.isAuthenticated();
+        const isAuth = await withDeadline(base44.auth.isAuthenticated());
         if (isAuth) {
-          const u = await base44.auth.me();
+          const u = await withDeadline(base44.auth.me());
           setUser(u);
           loadUserAndSub();
-          const [sp, rp] = await Promise.all([
-            base44.entities.StudentProfile.filter({ created_by: u.email }),
-            base44.entities.RecruiterProfile.filter({ created_by: u.email })
-          ]);
+          const [sp, rp] = await withDeadline(
+            Promise.all([
+              base44.entities.StudentProfile.filter({ created_by: u.email }),
+              base44.entities.RecruiterProfile.filter({ created_by: u.email }),
+            ])
+          );
           if (sp.length > 0) {
             setUserType('student');
           } else if (rp.length > 0) {
@@ -109,7 +150,7 @@ export default function Home() {
           }
         }
       } catch {
-        // logged-out or stale session
+        // logged-out, stale session, or slow/broken API
       }
       try {
         await loadJobs();
@@ -131,20 +172,35 @@ export default function Home() {
     } catch (e) {}
   };
 
-  const handlePlanClick = (planName) => {
+  const handleStudentPlanClick = (planName) => {
     if (!user) {
       base44.auth.redirectToLogin();
       return;
     }
-    const tierMap = { Bronze: 'bronze', Silver: 'silver', Gold: 'gold' };
-    setSelectedTier(tierMap[planName]);
+    const tierMap = { 'Industry Specific': 'bronze', 'Global': 'silver', 'Elite': 'gold' };
+    const tier = tierMap[planName];
+    if (!tier) return;
+    try {
+      sessionStorage.setItem('cc_subscribe_tier', tier);
+    } catch {
+      /* ignore */
+    }
     setShowSubscriptionModal(true);
   };
 
+  const handleFirmReferralClick = () => {
+    window.location.href =
+      'mailto:official.careerconnect@gmail.com?subject=CareerConnect%20%E2%80%94%20Firm%20referral%20package';
+  };
+
   const loadJobs = async () => {
-    const allJobs = await base44.entities.Job.list('-updated_date');
-    const active = allJobs.filter(j => j.status === 'active').slice(0, 3);
-    setJobs(active);
+    try {
+      const allJobs = await withDeadline(base44.entities.Job.list('-updated_date'));
+      const active = allJobs.filter(j => j.status === 'active').slice(0, 3);
+      setJobs(active);
+    } catch {
+      setJobs([]);
+    }
   };
 
   if (loading) return (
@@ -394,7 +450,7 @@ export default function Home() {
 
       {/* ── Pricing ── */}
       <section className="py-24 px-6 bg-[#EAF5FB]/40">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-6">
             <div className="inline-block mb-6 p-3.5 bg-[#EAF5FB] border border-[#A8D4E8] rounded-lg">
               <p className="text-[#3D87AA] text-sm font-semibold">🎉 Lucky Customer Phase: FREE Subscriptions (Testing Period)</p>
@@ -407,57 +463,165 @@ export default function Home() {
             <p className="text-[#7A7870] text-lg">Upgrade or cancel anytime — no lock-in.</p>
           </motion.div>
 
-          {/* Tab toggle */}
-          <div className="flex justify-center mb-10">
-            <div className="inline-flex bg-white border border-[#A8D4E8]/40 rounded-xl p-1 shadow-sm">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="flex justify-center mb-8"
+          >
+            <div
+              className="inline-flex p-1 rounded-2xl bg-white/90 border border-[#A8D4E8]/50 shadow-sm"
+              role="tablist"
+              aria-label="Pricing audience"
+            >
               <button
-                onClick={() => setPricingTab('student')}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${pricingTab === 'student' ? 'bg-[#5BA4C4] text-white shadow-sm' : 'text-[#7A7870] hover:text-[#3D87AA]'}`}
+                type="button"
+                role="tab"
+                aria-selected={pricingAudience === 'student'}
+                onClick={() => setPricingAudience('student')}
+                className={`px-5 sm:px-7 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+                  pricingAudience === 'student'
+                    ? 'bg-[#5BA4C4] text-white shadow-md'
+                    : 'text-[#7A7870] hover:text-[#2E3F4F]'
+                }`}
               >
-                🎓 For Students
+                <GraduationCap className="w-4 h-4" />
+                For students
               </button>
               <button
-                onClick={() => setPricingTab('recruiter')}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${pricingTab === 'recruiter' ? 'bg-[#3D87AA] text-white shadow-sm' : 'text-[#7A7870] hover:text-[#3D87AA]'}`}
+                type="button"
+                role="tab"
+                aria-selected={pricingAudience === 'recruiter'}
+                onClick={() => setPricingAudience('recruiter')}
+                className={`px-5 sm:px-7 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+                  pricingAudience === 'recruiter'
+                    ? 'bg-[#3D87AA] text-white shadow-md'
+                    : 'text-[#7A7870] hover:text-[#2E3F4F]'
+                }`}
               >
-                💼 For Recruiters
+                <Briefcase className="w-4 h-4" />
+                For recruiters
               </button>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-5 items-start max-w-3xl mx-auto">
-            {(pricingTab === 'student' ? STUDENT_PLANS : RECRUITER_PLANS).map((plan, i) => (
-              <motion.div key={`${pricingTab}-${i}`} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-                className={`relative rounded-2xl overflow-hidden border transition-all ${plan.highlight ? 'border-[#5BA4C4] shadow-2xl shadow-[#5BA4C4]/15 bg-white' : 'border-[#A8D4E8]/40 bg-white'}`}>
-                {plan.badge && (
-                  <div className={`text-center py-2 text-xs font-bold tracking-wider uppercase ${plan.highlight ? 'bg-[#5BA4C4] text-white' : 'bg-[#2E3F4F] text-white'}`}>
-                    {plan.badge}
-                  </div>
-                )}
-                <div className="p-7">
-                  <h3 className="text-xl font-bold text-[#2E3F4F] mb-1">{plan.name}</h3>
-                  <div className="flex items-baseline gap-1 mb-6">
-                    <span className="text-4xl font-bold text-[#2E3F4F]">{plan.price}</span>
-                    <span className="text-[#7A7870] text-sm">{plan.period}</span>
-                  </div>
-                  <ul className="space-y-3 mb-8">
-                    {plan.features.map((f, j) => (
-                      <li key={j} className="flex items-start gap-2.5 text-sm text-[#7A7870]">
+          {pricingAudience === 'student' ? (
+            <div className="min-w-0">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-white border border-[#A8D4E8] shadow-sm flex items-center justify-center shrink-0">
+                  <GraduationCap className="w-5 h-5 text-[#3D87AA]" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#3D87AA]">Candidate subscriptions</p>
+                  <h3 className="text-lg font-bold text-[#2E3F4F] leading-tight">Monthly — swipe to compare plans</h3>
+                </div>
+              </div>
+              <p className="text-xs text-[#7A7870] mb-4 text-center">Swipe sideways to see Industry Specific, Global, and Elite.</p>
+
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 pt-1 -mx-1 px-1 [scrollbar-width:thin] md:justify-center">
+                {STUDENT_PLANS.map((plan, i) => {
+                  const isGlobal = plan.variant === 'global';
+                  const isElite = plan.variant === 'elite';
+                  const cardBody = isElite
+                    ? 'bg-[#152B45] text-white'
+                    : isGlobal
+                      ? 'bg-gradient-to-br from-[#7EC4E4] to-[#5BA4C4] text-white'
+                      : 'bg-white text-[#2E3F4F]';
+                  const featColor = isElite || isGlobal ? 'text-white/90' : 'text-[#7A7870]';
+                  const checkColor = isElite || isGlobal ? 'text-white' : 'text-[#5BA4C4]';
+                  const titleColor = isElite || isGlobal ? 'text-white' : 'text-[#2E3F4F]';
+                  const priceColor = isElite || isGlobal ? 'text-white' : 'text-[#2E3F4F]';
+                  const periodColor = isElite || isGlobal ? 'text-white/75' : 'text-[#7A7870]';
+
+                  return (
+                    <motion.div
+                      key={plan.name}
+                      variants={fadeUp}
+                      initial="hidden"
+                      whileInView="show"
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.08 }}
+                      className={`relative rounded-2xl overflow-hidden border shrink-0 min-w-[min(100%,280px)] w-[min(100%,280px)] max-w-[280px] snap-center transition-shadow sm:min-w-[260px] ${
+                        isElite ? 'border-[#0f172a] shadow-xl shadow-slate-900/25' : isGlobal ? 'border-[#5BA4C4] shadow-lg shadow-[#5BA4C4]/20' : 'border-[#A8D4E8]/50 shadow-sm'
+                      }`}
+                    >
+                      {plan.badge && (
+                        <div className="text-center py-2 text-[10px] font-bold tracking-widest uppercase bg-[#2E3F4F] text-white">
+                          {plan.badge}
+                        </div>
+                      )}
+                      <div className={`p-6 ${cardBody}`}>
+                        <h3 className={`text-lg font-bold mb-1 ${titleColor}`}>{plan.name}</h3>
+                        <div className="flex items-baseline gap-1 mb-5">
+                          <span className={`text-3xl font-black ${priceColor}`}>{plan.price}</span>
+                          <span className={`text-sm ${periodColor}`}>{plan.period}</span>
+                        </div>
+                        <ul className="space-y-2.5 mb-6">
+                          {plan.features.map((f, j) => (
+                            <li key={j} className={`flex items-start gap-2 text-sm ${featColor}`}>
+                              <CheckCircle2 className={`w-4 h-4 flex-shrink-0 mt-0.5 ${checkColor}`} />
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
+                        <Button
+                          onClick={() => handleStudentPlanClick(plan.name)}
+                          className={`w-full rounded-xl h-10 font-bold text-sm flex items-center justify-center gap-2 ${
+                            isElite || isGlobal
+                              ? 'bg-white text-[#3D87AA] hover:bg-[#EAF5FB] shadow-md'
+                              : 'bg-[#EAF5FB] hover:bg-[#A8D4E8]/50 text-[#3D87AA]'
+                          }`}
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          Get started
+                        </Button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="max-w-lg mx-auto">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-100 to-amber-50 border border-amber-200 flex items-center justify-center shrink-0 shadow-sm">
+                  <Shield className="w-5 h-5 text-amber-700" strokeWidth={2.25} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#3D87AA]">Recruiters</p>
+                  <h3 className="text-base font-bold text-[#2E3F4F] leading-tight">{RECRUITER_FIRM_PACKAGE.sectionTitle}</h3>
+                </div>
+              </div>
+
+              <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                className="rounded-2xl overflow-hidden border border-[#A8D4E8]/50 bg-gradient-to-b from-[#eef5f9] to-[#e8f1f8] shadow-md flex flex-col"
+              >
+                <div className="p-7 flex flex-col flex-1">
+                  <h3 className="text-xl font-bold text-[#2E3F4F] mb-1 capitalize">{RECRUITER_FIRM_PACKAGE.name}</h3>
+                  <p className="text-sm text-[#3D87AA] font-medium mb-6">{RECRUITER_FIRM_PACKAGE.subtitle}</p>
+                  <ul className="space-y-3 mb-8 flex-1">
+                    {RECRUITER_FIRM_PACKAGE.features.map((f, j) => (
+                      <li key={j} className="flex items-start gap-2.5 text-sm text-[#4a6572]">
                         <CheckCircle2 className="w-4 h-4 text-[#5BA4C4] flex-shrink-0 mt-0.5" />
                         {f}
                       </li>
                     ))}
                   </ul>
-                  <Button 
-                    onClick={() => handlePlanClick(plan.name)}
-                    className={`w-full rounded-xl h-10 font-bold text-sm flex items-center justify-center gap-2 ${plan.highlight ? 'bg-[#5BA4C4] hover:bg-[#3D87AA] text-white shadow-lg shadow-[#5BA4C4]/20' : 'bg-[#EAF5FB] hover:bg-[#A8D4E8]/40 text-[#3D87AA] shadow-none'}`}>
-                    <CreditCard className="w-4 h-4" />
-                    Get Started
+                  <Button
+                    onClick={handleFirmReferralClick}
+                    className="w-full rounded-xl h-10 font-bold text-sm bg-[#3D87AA] hover:bg-[#2d5f7a] text-white"
+                  >
+                    Contact us
                   </Button>
                 </div>
               </motion.div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       </section>
 
