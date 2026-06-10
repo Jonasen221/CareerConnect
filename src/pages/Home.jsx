@@ -9,13 +9,6 @@ import { Button } from "@/components/ui/button";
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } } };
 
-const TEAM = [
-  { name: 'Tadiwa Ndadzungira', role: 'Chief Marketing & Operations Officer', flag: '🇿🇼', linkedin: 'https://www.linkedin.com/in/tadiwa-mazvita-ndadzungira/', email: 'tadiwandadzungira14@gmail.com', workEmail: 'tw.careerconnect@outlook.com' },
-  { name: 'Jonas Neller', role: 'Co-Chief Executive Officer & Chief Financial Officer', flag: '🇩🇪', linkedin: 'https://www.linkedin.com/in/jonas-neller1/', email: 'jonas.neller@gmail.com', workEmail: 'jn.careerconnect@outlook.com' },
-  { name: 'Franziska Nickenig', role: 'Chief Executive Officer', flag: '🇩🇪', linkedin: 'https://www.linkedin.com/in/franziskanickenig/', email: 'franziskanickenig@gmail.com', workEmail: 'fn.careerconnect@outlook.com' },
-  { name: 'Luisa Barzanallana', role: 'Chief Communication & Socials Officer', flag: '🇪🇸', linkedin: 'https://www.linkedin.com/in/luisa-garcia-b-way/', email: 'lfgbarzanallana@gmail.com', workEmail: 'lg.careerconnect@outlook.com' },
-];
-
 const FEATURES = [
   { icon: Zap, title: 'Swipe to Apply', desc: 'Browse curated jobs with a swipe. Like what you love, skip the rest — job hunting made effortless.' },
   { icon: Users, title: 'Smart Matching', desc: 'When a recruiter shortlists you and you swipe right — it\'s a mutual match. Start a conversation instantly.' },
@@ -460,47 +453,6 @@ export default function Home() {
               </a>
             </div>
           </motion.div>
-        </div>
-      </section>
-
-      {/* ── Team ── */}
-      <section className="py-24 px-6 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-16">
-            <p className="text-[#3D87AA] text-sm font-semibold uppercase tracking-widest mb-3">Our Team</p>
-            <h2 className="text-4xl font-black text-[#2E3F4F] tracking-tight mb-4">The people behind CareerConnect</h2>
-            <p className="text-[#7A7870] text-lg">A passionate international team on a mission to connect talent with opportunity.</p>
-          </motion.div>
-          <div className="mb-12 rounded-2xl overflow-hidden shadow-lg">
-            <img
-              src="https://media.base44.com/images/public/6999a5c7bcfe6f91940c0916/c21883e97_Screenshot2026-03-22at153400.png"
-              alt="CareerConnect Team"
-              className="w-full object-cover max-h-[500px]"
-              style={{ objectPosition: '50% 10%' }}
-            />
-          </div>
-          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {TEAM.map((member, i) => (
-              <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} transition={{ delay: i * 0.07 }}
-                className="bg-[#EAF5FB] border border-[#A8D4E8]/40 rounded-2xl p-6 text-center hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col items-center">
-                <div className="w-14 h-14 bg-gradient-to-br from-[#5BA4C4] to-[#3D87AA] rounded-xl flex items-center justify-center mx-auto mb-3 shadow-md shadow-[#5BA4C4]/20">
-                  <span className="text-white font-black text-lg">{member.name[0]}</span>
-                </div>
-                <div className="text-xl mb-2">{member.flag}</div>
-                <h3 className="text-xs font-bold text-[#2E3F4F] leading-snug">{member.name}</h3>
-                <p className="text-xs text-[#5BA4C4] font-medium mt-1 mb-2 leading-snug">{member.role}</p>
-                {member.workEmail && (
-                  <a href={`mailto:${member.workEmail}`} className="text-xs text-[#7A7870] hover:text-[#3D87AA] hover:underline break-all">{member.workEmail}</a>
-                )}
-                {member.linkedin && (
-                  <a href={member.linkedin} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 mt-2 text-[#0A66C2] text-xs font-semibold hover:underline">
-                    <Linkedin className="w-3 h-3" /> LinkedIn
-                  </a>
-                )}
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
 

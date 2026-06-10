@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import MobileSelect from '../components/layout/MobileSelect';
 import { GraduationCap, Briefcase, CheckCircle, ArrowRight, ArrowLeft, UserSearch } from 'lucide-react';
-import VideoUpload from '../components/onboarding/VideoUpload';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileText, X as XIcon } from 'lucide-react';
 
@@ -50,7 +49,6 @@ export default function Onboarding() {
   const [step, setStep] = useState(1);
   const [role, setRole] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [pitchVideoUrl, setPitchVideoUrl] = useState('');
 
   const [cvUrl, setCvUrl] = useState('');
   const [cvUploading, setCvUploading] = useState(false);
@@ -81,18 +79,7 @@ export default function Onboarding() {
   const selectRole = (r) => {
     setRole(r);
     setRecruiterData((p) => ({ ...p, is_contact_point: r === 'contact_point' }));
-    setStep(2);
-  };
-
-  const handleVideoContinue = () => {
-    if (!pitchVideoUrl) {
-      setErrors({ pitch_video: 'Please upload your 30-90 second pitch video to continue' });
-      return;
-    }
-    setErrors({});
-    // Store pitch video as intro_video_url
-    setStudentData(p => ({ ...p, intro_video_url: pitchVideoUrl }));
-    setRecruiterData(p => ({ ...p, intro_video_url: pitchVideoUrl }));
+    // Pitch-video step is disabled — jump straight to the profile form.
     setStep(3);
   };
 
@@ -240,46 +227,12 @@ export default function Onboarding() {
             </motion.div>
           }
 
-          {step === 2 &&
-          <motion.div key="step2video" variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
-              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
-                <button onClick={() => { setStep(1); setErrors({}); }} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-6"><ArrowLeft className="w-4 h-4" /> Back</button>
-                <div className="mb-7">
-                  <span className="text-xs font-bold uppercase tracking-widest text-[#3D87AA] bg-[#EAF5FB] px-3 py-1 rounded-full">Step 1 of 2</span>
-                  <h2 className="text-2xl font-bold text-slate-800 mt-3">Record your 30-90 second pitch 🎥</h2>
-                  <p className="text-slate-500 text-sm mt-1">Introduce yourself in 30-90 seconds — this is the first thing your potential match will see. Be yourself!</p>
-                </div>
-                <div className="space-y-5">
-                  <div className="p-4 bg-[#EAF5FB] border border-[#A8D4E8] rounded-2xl space-y-2 text-sm text-[#2d5f7a]">
-                    <p className="font-semibold">💡 What to include in your pitch:</p>
-                    <ul className="space-y-1 text-sm text-slate-600 list-disc list-inside">
-                      <li>Who you are and your background</li>
-                      <li>What you're passionate about</li>
-                      <li>What kind of opportunity you're looking for</li>
-                      <li>Why CareerConnect is right for you</li>
-                    </ul>
-                  </div>
-                  <VideoUpload
-                    value={pitchVideoUrl}
-                    onChange={(v) => { setPitchVideoUrl(v); setErrors({}); }}
-                    label="30-90 second pitch video"
-                    description="Keep it between 30-90 seconds. Tell us who you are, what drives you, and what you're looking for."
-                  />
-                  {errors.pitch_video && <p className="text-sm text-red-500 font-medium">{errors.pitch_video}</p>}
-                  <Button onClick={handleVideoContinue} className="w-full bg-[#5BA4C4] hover:bg-[#3D87AA] text-white py-6 text-base font-semibold rounded-xl">
-                    Continue to Profile →
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          }
-
           {step === 3 && role === 'student' &&
           <motion.div key="step3s" variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
               <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
-                <button onClick={() => setStep(2)} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-6"><ArrowLeft className="w-4 h-4" /> Back</button>
+                <button onClick={() => { setStep(1); setErrors({}); }} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-6"><ArrowLeft className="w-4 h-4" /> Back</button>
                 <div className="mb-7">
-                  <span className="text-xs font-bold uppercase tracking-widest text-[#3D87AA] bg-[#EAF5FB] px-3 py-1 rounded-full">Step 2 of 2 · Candidate Profile</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-[#3D87AA] bg-[#EAF5FB] px-3 py-1 rounded-full">Candidate Profile</span>
                   <h2 className="text-2xl font-bold text-slate-800 mt-3">Build your profile</h2>
                   <p className="text-slate-500 text-sm mt-1">This will be reviewed by our team and shared with recruiters</p>
                 </div>
@@ -293,7 +246,7 @@ export default function Onboarding() {
                     <span>✓ Skills &amp; languages</span>
                     <span>✓ Work preferences</span>
                     <span>✓ Bio</span>
-                    <span>✓ LinkedIn &amp; pitch video</span>
+                    <span>✓ LinkedIn profile</span>
                     <span>✓ CV / resume</span>
                     <span className="text-amber-500">✗ Phone &amp; email (hidden)</span>
                   </div>
@@ -480,11 +433,11 @@ export default function Onboarding() {
           {step === 3 && isRecruiterType &&
           <motion.div key="step3r" variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25 }}>
               <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
-                <button onClick={() => setStep(2)} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-6"><ArrowLeft className="w-4 h-4" /> Back</button>
+                <button onClick={() => { setStep(1); setErrors({}); }} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-6"><ArrowLeft className="w-4 h-4" /> Back</button>
                 <div className="mb-7">
                   {role === 'contact_point' ?
-                <span className="text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">Step 2 of 2 · Contact Point Profile</span> :
-                <span className="text-xs font-bold uppercase tracking-widest text-[#3D87AA] bg-[#EAF5FB] px-3 py-1 rounded-full">Step 2 of 2 · Recruiter Profile</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">Contact Point Profile</span> :
+                <span className="text-xs font-bold uppercase tracking-widest text-[#3D87AA] bg-[#EAF5FB] px-3 py-1 rounded-full">Recruiter Profile</span>
                 }
                   <h2 className="text-2xl font-bold text-slate-800 mt-3">{role === 'contact_point' ? 'Tell us about you' : 'Tell us about you'}</h2>
                   <p className="text-slate-500 text-sm mt-1">
