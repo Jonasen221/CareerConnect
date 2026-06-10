@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { formatAuthFlowError } from '@/lib/formatAuthFlowError';
 import { Button } from '@/components/ui/button';
@@ -10,15 +10,15 @@ import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import SupabaseStatusBanner from '@/components/auth/SupabaseStatusBanner';
 
 export default function Login() {
-  const { signInWithPassword, isAuthenticated, isLoadingAuth } = useAuth();
+  const { signInOrSignUp, isAuthenticated, isLoadingAuth } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Already signed in: leave login (stops full-page "bounce" and odd next=login loops)
+  // Already signed in: bounce out of the login page safely.
   useEffect(() => {
     if (isLoadingAuth || !isAuthenticated) return;
     const rawNext = params.get('next');
@@ -48,9 +48,9 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      await signInWithPassword(email, password);
-      // Post-sign-in navigation is handled by the useEffect that watches
-      // `isAuthenticated` (so `?next=`, off-site, and /login are parsed safely).
+      await signInOrSignUp(email, fullName);
+      // Post-sign-in navigation is handled by the useEffect above that
+      // watches `isAuthenticated`.
     } catch (err) {
       setError(formatAuthFlowError(err));
     } finally {
@@ -65,8 +65,10 @@ export default function Login() {
           <div className="w-10 h-10 mx-auto bg-[#5BA4C4] rounded-xl flex items-center justify-center mb-3">
             <span className="text-white font-bold text-sm">CC</span>
           </div>
-          <h1 className="text-2xl font-semibold text-slate-800">Welcome back</h1>
-          <p className="text-sm text-slate-500">Sign in to CareerConnect</p>
+          <h1 className="text-2xl font-semibold text-slate-800">Jump in</h1>
+          <p className="text-sm text-slate-500">
+            Free for everyone — no password required.
+          </p>
         </div>
 
         {!isSupabaseConfigured && (
@@ -80,6 +82,18 @@ export default function Login() {
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
+            <Label htmlFor="full_name">Your name</Label>
+            <Input
+              id="full_name"
+              type="text"
+              autoComplete="name"
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Jane Doe"
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
@@ -88,17 +102,7 @@ export default function Login() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              placeholder="you@example.com"
             />
           </div>
 
@@ -113,15 +117,13 @@ export default function Login() {
             disabled={loading}
             className="w-full bg-[#5BA4C4] hover:bg-[#3D87AA] text-white"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Signing in…' : 'Continue'}
           </Button>
         </form>
 
-        <p className="text-center text-sm text-slate-500">
-          Don&rsquo;t have an account?{' '}
-          <Link to="/signup" className="text-[#3D87AA] font-semibold hover:underline">
-            Create one
-          </Link>
+        <p className="text-center text-xs text-slate-400">
+          New here? Just enter your name and email — we'll set up your account
+          automatically.
         </p>
       </div>
     </div>

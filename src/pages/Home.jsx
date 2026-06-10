@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
-import { GraduationCap, Briefcase, Sparkles, Linkedin, ArrowRight, CheckCircle2, Users, Zap, MessageSquare, CalendarCheck, ShieldCheck, CreditCard, Shield } from 'lucide-react';
+import { GraduationCap, Briefcase, Sparkles, Linkedin, ArrowRight, Users, Zap, MessageSquare, CalendarCheck, ShieldCheck } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
-import SubscriptionModal from '@/components/subscriptions/SubscriptionModal';
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } } };
 
@@ -16,64 +15,6 @@ const TEAM = [
   { name: 'Franziska Nickenig', role: 'Chief Executive Officer', flag: '🇩🇪', linkedin: 'https://www.linkedin.com/in/franziskanickenig/', email: 'franziskanickenig@gmail.com', workEmail: 'fn.careerconnect@outlook.com' },
   { name: 'Luisa Barzanallana', role: 'Chief Communication & Socials Officer', flag: '🇪🇸', linkedin: 'https://www.linkedin.com/in/luisa-garcia-b-way/', email: 'lfgbarzanallana@gmail.com', workEmail: 'lg.careerconnect@outlook.com' },
 ];
-
-const STUDENT_PLANS = [
-  {
-    name: 'Industry Specific',
-    price: '€14.95',
-    period: '/mo',
-    features: [
-      'Industry-specific listings',
-      '2 swipes/day',
-      'Profile visible to recruiters',
-      'Community events',
-    ],
-    variant: 'default',
-    badge: null,
-  },
-  {
-    name: 'Global',
-    price: '€25.95',
-    period: '/mo',
-    features: [
-      'All industries access',
-      '3 swipes/day',
-      'Priority profile review',
-      'Exclusive events',
-      'Direct message priority',
-    ],
-    variant: 'global',
-    badge: 'BEST VALUE',
-  },
-  {
-    name: 'Elite',
-    price: '€39.95',
-    period: '/mo',
-    features: [
-      'Everything in Global',
-      '10 swipes/day',
-      'Featured profile',
-      '1-on-1 coaching w/ Franzi',
-      'Full CV + LinkedIn + prep',
-    ],
-    variant: 'elite',
-    badge: 'PREMIUM',
-  },
-];
-
-/** Single firm package — shown beside candidate tiers */
-const RECRUITER_FIRM_PACKAGE = {
-  sectionTitle: 'Recruiter — firm referral package',
-  name: 'Personalised pricing',
-  subtitle: 'Negotiated directly with your firm',
-  features: [
-    'Unlimited talent search & swipe',
-    'Priority candidate shortlisting',
-    'Branded company profile & job listings',
-    'Exclusive recruiter events',
-    'Dedicated account support',
-  ],
-};
 
 const FEATURES = [
   { icon: Zap, title: 'Swipe to Apply', desc: 'Browse curated jobs with a swipe. Like what you love, skip the rest — job hunting made effortless.' },
@@ -103,11 +44,7 @@ export default function Home() {
   const [jobs, setJobs] = useState([]);
   const [user, setUser] = useState(null);
   const [userType, setUserType] = useState(null);
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [currentSubscription, setCurrentSubscription] = useState(null);
   const [counts, setCounts] = useState({ students: 0, recruiters: 0 });
-  /** Landing pricing: one pane at a time — student carousel vs recruiter firm package */
-  const [pricingAudience, setPricingAudience] = useState('student');
 
   useEffect(() => {
     const cap = setTimeout(() => setLoading(false), LANDING_HARD_CAP_MS);
@@ -136,7 +73,6 @@ export default function Home() {
         if (isAuth) {
           const u = await withDeadline(base44.auth.me());
           setUser(u);
-          loadUserAndSub();
           const [sp, rp] = await withDeadline(
             Promise.all([
               base44.entities.StudentProfile.filter({ created_by: u.email }),
@@ -161,36 +97,6 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadUserAndSub = async () => {
-    try {
-      const u = await base44.auth.me();
-      setUser(u);
-      const subs = await base44.entities.Subscription.filter({ created_by: u.email });
-      setCurrentSubscription(subs[0]?.tier || 'free');
-    } catch (e) {}
-  };
-
-  const handleStudentPlanClick = (planName) => {
-    if (!user) {
-      base44.auth.redirectToLogin();
-      return;
-    }
-    const tierMap = { 'Industry Specific': 'bronze', 'Global': 'silver', 'Elite': 'gold' };
-    const tier = tierMap[planName];
-    if (!tier) return;
-    try {
-      sessionStorage.setItem('cc_subscribe_tier', tier);
-    } catch {
-      /* ignore */
-    }
-    setShowSubscriptionModal(true);
-  };
-
-  const handleFirmReferralClick = () => {
-    window.location.href =
-      'mailto:official.careerconnect@gmail.com?subject=CareerConnect%20%E2%80%94%20Firm%20referral%20package';
   };
 
   const loadJobs = async () => {
@@ -448,181 +354,26 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Pricing ── */}
+      {/* ── Free for everyone ── */}
       <section className="py-24 px-6 bg-[#EAF5FB]/40">
-        <div className="max-w-6xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-6">
-            <div className="inline-block mb-6 p-3.5 bg-[#EAF5FB] border border-[#A8D4E8] rounded-lg">
-              <p className="text-[#3D87AA] text-sm font-semibold">🎉 Lucky Customer Phase: FREE Subscriptions (Testing Period)</p>
-              <p className="text-[#5BA4C4] text-xs mt-1">Subscriptions are FREE until July 1st, 2027. Early access for testing!</p>
-            </div>
-          </motion.div>
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-10">
-            <p className="text-[#3D87AA] text-sm font-semibold uppercase tracking-widest mb-3">Pricing</p>
-            <h2 className="text-4xl font-bold text-[#2E3F4F] tracking-tight mb-4">Choose your plan</h2>
-            <p className="text-[#7A7870] text-lg">Upgrade or cancel anytime — no lock-in.</p>
-          </motion.div>
-
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true }}
-            className="flex justify-center mb-8"
+        <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="max-w-2xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-white text-[#3D87AA] px-4 py-1.5 rounded-full text-xs font-semibold mb-6 border border-[#A8D4E8]/60 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5" /> Free for everyone
+          </div>
+          <h2 className="text-4xl font-bold text-[#2E3F4F] tracking-tight mb-4">
+            Every feature, <span className="text-[#5BA4C4]">€0</span>.
+          </h2>
+          <p className="text-[#7A7870] text-lg mb-8">
+            Career Arena games, job swiping, events, and messaging — all free.
+            Just enter your name and email to get started.
+          </p>
+          <Button
+            onClick={() => base44.auth.redirectToLogin()}
+            className="bg-[#5BA4C4] hover:bg-[#3D87AA] text-white h-12 px-8 rounded-xl text-sm font-bold shadow-md"
           >
-            <div
-              className="inline-flex p-1 rounded-2xl bg-white/90 border border-[#A8D4E8]/50 shadow-sm"
-              role="tablist"
-              aria-label="Pricing audience"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={pricingAudience === 'student'}
-                onClick={() => setPricingAudience('student')}
-                className={`px-5 sm:px-7 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
-                  pricingAudience === 'student'
-                    ? 'bg-[#5BA4C4] text-white shadow-md'
-                    : 'text-[#7A7870] hover:text-[#2E3F4F]'
-                }`}
-              >
-                <GraduationCap className="w-4 h-4" />
-                For students
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={pricingAudience === 'recruiter'}
-                onClick={() => setPricingAudience('recruiter')}
-                className={`px-5 sm:px-7 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
-                  pricingAudience === 'recruiter'
-                    ? 'bg-[#3D87AA] text-white shadow-md'
-                    : 'text-[#7A7870] hover:text-[#2E3F4F]'
-                }`}
-              >
-                <Briefcase className="w-4 h-4" />
-                For recruiters
-              </button>
-            </div>
-          </motion.div>
-
-          {pricingAudience === 'student' ? (
-            <div className="min-w-0">
-              <div className="flex items-center justify-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-[#A8D4E8] shadow-sm flex items-center justify-center shrink-0">
-                  <GraduationCap className="w-5 h-5 text-[#3D87AA]" />
-                </div>
-                <div className="text-left">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#3D87AA]">Candidate subscriptions</p>
-                  <h3 className="text-lg font-bold text-[#2E3F4F] leading-tight">Monthly — swipe to compare plans</h3>
-                </div>
-              </div>
-              <p className="text-xs text-[#7A7870] mb-4 text-center">Swipe sideways to see Industry Specific, Global, and Elite.</p>
-
-              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 pt-1 -mx-1 px-1 [scrollbar-width:thin] md:justify-center">
-                {STUDENT_PLANS.map((plan, i) => {
-                  const isGlobal = plan.variant === 'global';
-                  const isElite = plan.variant === 'elite';
-                  const cardBody = isElite
-                    ? 'bg-[#152B45] text-white'
-                    : isGlobal
-                      ? 'bg-gradient-to-br from-[#7EC4E4] to-[#5BA4C4] text-white'
-                      : 'bg-white text-[#2E3F4F]';
-                  const featColor = isElite || isGlobal ? 'text-white/90' : 'text-[#7A7870]';
-                  const checkColor = isElite || isGlobal ? 'text-white' : 'text-[#5BA4C4]';
-                  const titleColor = isElite || isGlobal ? 'text-white' : 'text-[#2E3F4F]';
-                  const priceColor = isElite || isGlobal ? 'text-white' : 'text-[#2E3F4F]';
-                  const periodColor = isElite || isGlobal ? 'text-white/75' : 'text-[#7A7870]';
-
-                  return (
-                    <motion.div
-                      key={plan.name}
-                      variants={fadeUp}
-                      initial="hidden"
-                      whileInView="show"
-                      viewport={{ once: true }}
-                      transition={{ delay: i * 0.08 }}
-                      className={`relative rounded-2xl overflow-hidden border shrink-0 min-w-[min(100%,280px)] w-[min(100%,280px)] max-w-[280px] snap-center transition-shadow sm:min-w-[260px] ${
-                        isElite ? 'border-[#0f172a] shadow-xl shadow-slate-900/25' : isGlobal ? 'border-[#5BA4C4] shadow-lg shadow-[#5BA4C4]/20' : 'border-[#A8D4E8]/50 shadow-sm'
-                      }`}
-                    >
-                      {plan.badge && (
-                        <div className="text-center py-2 text-[10px] font-bold tracking-widest uppercase bg-[#2E3F4F] text-white">
-                          {plan.badge}
-                        </div>
-                      )}
-                      <div className={`p-6 ${cardBody}`}>
-                        <h3 className={`text-lg font-bold mb-1 ${titleColor}`}>{plan.name}</h3>
-                        <div className="flex items-baseline gap-1 mb-5">
-                          <span className={`text-3xl font-black ${priceColor}`}>{plan.price}</span>
-                          <span className={`text-sm ${periodColor}`}>{plan.period}</span>
-                        </div>
-                        <ul className="space-y-2.5 mb-6">
-                          {plan.features.map((f, j) => (
-                            <li key={j} className={`flex items-start gap-2 text-sm ${featColor}`}>
-                              <CheckCircle2 className={`w-4 h-4 flex-shrink-0 mt-0.5 ${checkColor}`} />
-                              {f}
-                            </li>
-                          ))}
-                        </ul>
-                        <Button
-                          onClick={() => handleStudentPlanClick(plan.name)}
-                          className={`w-full rounded-xl h-10 font-bold text-sm flex items-center justify-center gap-2 ${
-                            isElite || isGlobal
-                              ? 'bg-white text-[#3D87AA] hover:bg-[#EAF5FB] shadow-md'
-                              : 'bg-[#EAF5FB] hover:bg-[#A8D4E8]/50 text-[#3D87AA]'
-                          }`}
-                        >
-                          <CreditCard className="w-4 h-4" />
-                          Get started
-                        </Button>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="max-w-lg mx-auto">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-100 to-amber-50 border border-amber-200 flex items-center justify-center shrink-0 shadow-sm">
-                  <Shield className="w-5 h-5 text-amber-700" strokeWidth={2.25} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#3D87AA]">Recruiters</p>
-                  <h3 className="text-base font-bold text-[#2E3F4F] leading-tight">{RECRUITER_FIRM_PACKAGE.sectionTitle}</h3>
-                </div>
-              </div>
-
-              <motion.div
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true }}
-                className="rounded-2xl overflow-hidden border border-[#A8D4E8]/50 bg-gradient-to-b from-[#eef5f9] to-[#e8f1f8] shadow-md flex flex-col"
-              >
-                <div className="p-7 flex flex-col flex-1">
-                  <h3 className="text-xl font-bold text-[#2E3F4F] mb-1 capitalize">{RECRUITER_FIRM_PACKAGE.name}</h3>
-                  <p className="text-sm text-[#3D87AA] font-medium mb-6">{RECRUITER_FIRM_PACKAGE.subtitle}</p>
-                  <ul className="space-y-3 mb-8 flex-1">
-                    {RECRUITER_FIRM_PACKAGE.features.map((f, j) => (
-                      <li key={j} className="flex items-start gap-2.5 text-sm text-[#4a6572]">
-                        <CheckCircle2 className="w-4 h-4 text-[#5BA4C4] flex-shrink-0 mt-0.5" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    onClick={handleFirmReferralClick}
-                    className="w-full rounded-xl h-10 font-bold text-sm bg-[#3D87AA] hover:bg-[#2d5f7a] text-white"
-                  >
-                    Contact us
-                  </Button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </div>
+            Jump in now <ArrowRight className="w-4 h-4 ml-1.5" />
+          </Button>
+        </motion.div>
       </section>
 
       {/* ── About Franzi ── */}
@@ -677,52 +428,16 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Services ── */}
+      {/* ── Learning resources ── */}
       <section className="py-24 px-6 bg-gradient-to-br from-[#2d6d8e] to-[#1e5070]">
-        <div className="max-w-5xl mx-auto">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-16">
-            <p className="text-[#A8D4E8] text-sm font-semibold uppercase tracking-widest mb-3">Premium Services</p>
-            <h2 className="text-4xl font-black text-white tracking-tight mb-4">Get an edge before you even apply</h2>
-            <p className="text-[#A8D4E8] text-lg max-w-lg mx-auto">Franzi personally reviews your materials and helps you stand out from the crowd.</p>
-            </motion.div>
-          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {[
-              {
-                name: 'Package 1',
-                price: '€99.95',
-                highlight: false,
-                includes: ['Call with Team', 'One Pager CV', 'LinkedIn Template', 'Interview Prep Document'],
-                time: null,
-              },
-              {
-                name: 'Package 2',
-                price: '€139.95',
-                highlight: true,
-                includes: ['Call with CEO', 'One Pager CV', 'LinkedIn Template', 'Interview Prep Document', '3 Top Recommendations'],
-                time: null,
-              },
-            ].map((pkg, i) => (
-              <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-                className={`rounded-2xl p-8 border flex flex-col ${pkg.highlight ? 'bg-gradient-to-br from-[#5BA4C4] to-[#3D87AA] border-[#5BA4C4]' : 'bg-white/10 border-white/20 hover:bg-white/15'} transition-all`}>
-                <p className="text-xs font-bold uppercase tracking-widest text-white/70 mb-2">{pkg.name}</p>
-                <p className="text-4xl font-black text-white mb-5">{pkg.price}</p>
-                <ul className="space-y-2 mb-5 flex-1">
-                  {pkg.includes.map((item, j) => (
-                    <li key={j} className="flex items-center gap-2 text-sm text-white/90">
-                      <CheckCircle2 className="w-4 h-4 text-white flex-shrink-0" />{item}
-                    </li>
-                  ))}
-                  {pkg.time && <li className="flex items-center gap-2 text-sm text-white/70 mt-1"><span className="w-4 h-4 flex-shrink-0">⏱</span>{pkg.time}</li>}
-                </ul>
-              </motion.div>
-            ))}
-          </div>
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mt-10">
-            <p className="text-[#A8D4E8]/70 text-sm mb-5">Earn credits through Career Arena games — then redeem for premium services</p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
-              <Button onClick={() => base44.auth.redirectToLogin()} className="bg-[#EAF5FB] hover:bg-[#A8D4E8] text-[#2E3F4F] border border-[#A8D4E8] h-11 px-7 rounded-xl font-bold text-sm">
-                🎮 Start Earning Credits
-              </Button>
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
+            <p className="text-[#A8D4E8] text-sm font-semibold uppercase tracking-widest mb-3">Keep learning</p>
+            <h2 className="text-4xl font-black text-white tracking-tight mb-4">Free resources we love</h2>
+            <p className="text-[#A8D4E8] text-lg mb-10 max-w-lg mx-auto">
+              Sharpen your skills outside CareerConnect with these picks.
+            </p>
+            <div className="flex flex-wrap gap-3 justify-center">
               <a href="https://www.graduatesfirst.com/" target="_blank" rel="noopener noreferrer">
                 <Button variant="outline" className="border border-white/20 text-white bg-transparent hover:bg-white/10 h-11 px-7 rounded-xl font-bold text-sm">
                   📋 Graduates First ↗
@@ -848,18 +563,6 @@ export default function Home() {
           <p className="text-white/60 text-xs">Sign up for our newsletter & WhatsApp community</p>
         </motion.div>
       </section>
-
-      {/* Subscription Modal */}
-      <SubscriptionModal 
-        open={showSubscriptionModal}
-        onOpenChange={setShowSubscriptionModal}
-        currentTier={currentSubscription}
-        onSubscribe={(tier) => {
-          setCurrentSubscription(tier);
-          setShowSubscriptionModal(false);
-        }}
-        userType="student"
-      />
 
       {/* ── Footer ── */}
       <footer className="py-10 px-6 bg-[#1e5070]">

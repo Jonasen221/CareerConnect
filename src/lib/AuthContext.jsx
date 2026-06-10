@@ -112,6 +112,67 @@ export const AuthProvider = ({ children }) => {
     return data;
   }, [hydrate]);
 
+  /**
+   * Free-access "honor system" sign-in.
+   *
+   * The user only provides a name + email. We use Supabase Auth under the hood
+   * so RLS keeps working, but the password is derived deterministically from
+   * the email — anyone who knows the email can sign in (which is exactly the
+   * intent of the open-access mode).
+   *
+   * Behaviour:
+   *   1. Try signInWithPassword first (returning users).
+   *   2. On "Invalid login credentials", signUp with the derived password and
+   *      the full_name as user metadata, then we already have a session
+   *      because email confirmation is disabled on this Supabase project
+   *      (mailer_autoconfirm: true).
+   */
+  const signInOrSignUp = useCallback(async (rawEmail, fullName) => {
+    const email = String(rawEmail || '').trim().toLowerCase();
+    const name = String(fullName || '').trim();
+    if (!email) throw new Error('Please enter your email.');
+    if (!name) throw new Error('Please enter your name.');
+
+    const password = `cc-public-${email}-2026`;
+
+    const signIn = await supabase.auth.signInWithPassword({ email, password });
+    if (!signIn.error) {
+      await hydrate(signIn.data.session);
+      // Keep the profile name in sync if the user typed a new one.
+      if (signIn.data.user?.user_metadata?.full_name !== name) {
+        await supabase
+          .from('profiles')
+          .update({ full_name: name, updated_date: new Date().toISOString() })
+          .eq('id', signIn.data.user.id);
+      }
+      return signIn.data;
+    }
+
+    const looksLikeWrongPassword = /invalid login credentials/i.test(
+      signIn.error.message || ''
+    );
+    if (!looksLikeWrongPassword) throw signIn.error;
+
+    const signUp = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    });
+    if (signUp.error) throw signUp.error;
+    if (signUp.data.session) {
+      await hydrate(signUp.data.session);
+      return signUp.data;
+    }
+
+    // No session returned (e.g. email confirmation is on for this project) —
+    // try a sign-in once more so the user gets a clear error if confirmation
+    // really is required.
+    const retry = await supabase.auth.signInWithPassword({ email, password });
+    if (retry.error) throw retry.error;
+    await hydrate(retry.data.session);
+    return retry.data;
+  }, [hydrate]);
+
   const logout = useCallback(async (shouldRedirect = true) => {
     await supabase.auth.signOut();
     setUser(null);
@@ -142,6 +203,7 @@ export const AuthProvider = ({ children }) => {
         checkUserAuth,
         signInWithPassword,
         signUpWithPassword,
+        signInOrSignUp,
         logout,
         navigateToLogin,
       }}

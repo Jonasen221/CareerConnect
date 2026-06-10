@@ -185,10 +185,6 @@ Return exactly 3 job picks.`,
                 <p className="text-xs text-white/70 mt-0.5">XP</p>
               </div>
               <div className="bg-white/20 backdrop-blur rounded-2xl px-3 py-2 text-center min-w-[64px]">
-                <p className="text-lg font-black text-white leading-none">🪙 {gameProgress?.credits || 0}</p>
-                <p className="text-xs text-white/70 mt-0.5">credits</p>
-              </div>
-              <div className="bg-white/20 backdrop-blur rounded-2xl px-3 py-2 text-center min-w-[64px]">
                 <p className="text-lg font-black text-white leading-none">🔥 {gameProgress?.streak_days || 0}</p>
                 <p className="text-xs text-white/70 mt-0.5">streak</p>
               </div>
@@ -298,7 +294,7 @@ Return exactly 3 job picks.`,
               <span className="text-4xl">🏆</span>
               <div>
                 <p className="font-black text-slate-800 dark:text-slate-100">Career Arena</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Level {gameProgress?.level || 1} · {gameProgress?.total_xp || 0} XP · Play games, earn credits & unlock career services</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Level {gameProgress?.level || 1} · {gameProgress?.total_xp || 0} XP · Play games, earn XP & unlock events</p>
               </div>
             </div>
             <ArrowRight className="w-5 h-5 text-[#5BA4C4] flex-shrink-0" />
@@ -306,15 +302,14 @@ Return exactly 3 job picks.`,
         </div>
       </Link>
 
-      {/* How to Earn Credits */}
+      {/* How to Earn XP */}
       <div className="mb-8 p-5 bg-[#EAF5FB] border border-[#A8D4E8] rounded-3xl">
-        <h2 className="font-black text-[#2d5f7a] mb-4 flex items-center gap-2">🪙 Earn Credits & XP</h2>
-        <div className="grid md:grid-cols-4 gap-4">
+        <h2 className="font-black text-[#2d5f7a] mb-4 flex items-center gap-2">⚡ Earn XP</h2>
+        <div className="grid md:grid-cols-3 gap-4">
           {[
             { icon: '🎮', title: 'Play Games', desc: '100+ XP per game', color: 'from-[#5BA4C4] to-[#4a90b0]' },
             { icon: '📜', title: 'Upload Certificates', desc: '100 XP per cert', color: 'from-[#4a90b0] to-[#3D87AA]' },
-            { icon: '⚡', title: 'Daily Streaks', desc: '+50 XP bonus every 7 days', color: 'from-[#3D87AA] to-[#2d6d8e]' },
-            { icon: '💰', title: 'Redeem for Services', desc: '€1 credit = 1 XP', color: 'from-[#2d6d8e] to-[#1e5070]' },
+            { icon: '🔥', title: 'Daily Streaks', desc: '+50 XP bonus every 7 days', color: 'from-[#3D87AA] to-[#2d6d8e]' },
           ].map((item, i) => (
             <div key={i} className={`bg-gradient-to-br ${item.color} rounded-2xl p-4 text-white text-center`}>
               <div className="text-3xl mb-2">{item.icon}</div>

@@ -3,10 +3,9 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, LogOut, Shield, Menu, X, Star, Gift, Phone, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, LogOut, Shield, Menu, X, Star, Phone, ArrowLeft } from 'lucide-react';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import BottomTabNav from './components/layout/BottomTabNav';
-import SubscriptionGate from './components/subscriptions/SubscriptionGate';
 import RecruiterBottomTabNav from './components/layout/RecruiterBottomTabNav';
 import { ADMIN_DEMO_LAYOUT_PADDING_CLASS } from '@/components/admin/AdminDemoBar';
 import { useDemoPreview } from '@/lib/DemoPreviewContext';
@@ -18,7 +17,6 @@ export default function Layout({ children, currentPageName }) {
   const [userType, setUserType] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [hasSubscription, setHasSubscription] = useState(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -50,13 +48,8 @@ export default function Layout({ children, currentPageName }) {
       if (sp.length > 0) { setUserType('student'); if (sp[0].photo_url) setUser(prev => ({ ...prev, photo_url: sp[0].photo_url })); }
       else if (rp.length > 0) setUserType('recruiter');
       else setUserType('none'); // no profile yet - send to onboarding
-      const [unread, subs] = await Promise.all([
-        base44.entities.Message.filter({ receiver_email: u.email, read: false }),
-        base44.entities.Subscription.filter({ created_by: u.email })
-      ]);
+      const unread = await base44.entities.Message.filter({ receiver_email: u.email, read: false });
       setUnreadCount(unread.length);
-      const paid = subs.find(s => s.tier && s.tier !== 'free');
-      setHasSubscription(u.role === 'admin' ? true : !!paid);
     } catch (e) {
       // Not authenticated — send the user to the login page instead of
       // leaving them stuck on a loading spinner.
@@ -78,7 +71,6 @@ export default function Layout({ children, currentPageName }) {
           { label: 'Dashboard', icon: LayoutDashboard, page: 'StudentDashboard' },
           { label: 'Explore Jobs', icon: Zap, page: 'JobSwipe' },
           { label: 'Career Arena', icon: Star, page: 'CareerGames' },
-          { label: 'Services', icon: Gift, page: 'ServicesBooking' },
           { label: 'Call Requests', icon: Phone, page: 'CallRequests' },
           { label: 'Interviews', icon: Calendar, page: 'InterviewScheduling' },
           { label: 'My Profile', icon: User, page: 'StudentProfilePage' },
@@ -110,7 +102,7 @@ export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
 
   // Pages that are "root" tabs — no back button shown
-  const rootPages = ['StudentDashboard', 'RecruiterDashboard', 'AdminDashboard', 'JobSwipe', 'EventsPage', 'Messages', 'CareerGames', 'ServicesBooking', 'StudentSearch', 'JobManagement', 'StudentSwipe', 'RecruiterProfilePage', 'StudentProfilePage', 'CallRequests', 'InterviewScheduling'];
+  const rootPages = ['StudentDashboard', 'RecruiterDashboard', 'AdminDashboard', 'JobSwipe', 'EventsPage', 'Messages', 'CareerGames', 'StudentSearch', 'JobManagement', 'StudentSwipe', 'RecruiterProfilePage', 'StudentProfilePage', 'CallRequests', 'InterviewScheduling'];
   const isSubPage = !rootPages.includes(currentPageName);
 
   const noLayout = ['Home', 'Onboarding'];
@@ -120,13 +112,6 @@ export default function Layout({ children, currentPageName }) {
   // send them through the onboarding flow.
   if (userType === 'none') {
     return <Navigate to={createPageUrl('Onboarding')} replace />;
-  }
-
-  // Subscription gate for non-admin users (enabled from July 2026 onwards)
-  const subscriptionGateDate = new Date('2026-07-01');
-  const isSubscriptionGateActive = new Date() >= subscriptionGateDate;
-  if (isSubscriptionGateActive && user?.role !== 'admin' && hasSubscription === false && (effectiveUserType === 'student' || effectiveUserType === 'recruiter')) {
-    return <SubscriptionGate userType={effectiveUserType} onSubscribed={() => setHasSubscription(true)} />;
   }
 
   if (!userType) return (

@@ -59,7 +59,6 @@ import Messages from './pages/Messages';
 import Onboarding from './pages/Onboarding';
 import RecruiterDashboard from './pages/RecruiterDashboard';
 import RecruiterProfilePage from './pages/RecruiterProfilePage';
-import ServicesBooking from './pages/ServicesBooking';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentProfilePage from './pages/StudentProfilePage';
 import StudentSearch from './pages/StudentSearch';
@@ -81,7 +80,6 @@ export const PAGES = {
     "Onboarding": Onboarding,
     "RecruiterDashboard": RecruiterDashboard,
     "RecruiterProfilePage": RecruiterProfilePage,
-    "ServicesBooking": ServicesBooking,
     "StudentDashboard": StudentDashboard,
     "StudentProfilePage": StudentProfilePage,
     "StudentSearch": StudentSearch,
