@@ -57,6 +57,7 @@ import JobManagement from './pages/JobManagement';
 import JobSwipe from './pages/JobSwipe';
 import Messages from './pages/Messages';
 import Onboarding from './pages/Onboarding';
+import Projects from './pages/Projects';
 import RecruiterDashboard from './pages/RecruiterDashboard';
 import RecruiterProfilePage from './pages/RecruiterProfilePage';
 import StudentDashboard from './pages/StudentDashboard';
@@ -78,6 +79,7 @@ export const PAGES = {
     "JobSwipe": JobSwipe,
     "Messages": Messages,
     "Onboarding": Onboarding,
+    "Projects": Projects,
     "RecruiterDashboard": RecruiterDashboard,
     "RecruiterProfilePage": RecruiterProfilePage,
     "StudentDashboard": StudentDashboard,

@@ -8,13 +8,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Search, Star, Filter, GraduationCap, MapPin, Link as LinkIcon, CheckCircle, ChevronDown, Phone, Sparkles, FileText, X, Video, BarChart2 } from 'lucide-react';
 import CandidateCompare from '../components/candidates/CandidateCompare';
 import CallRequestForm from '../components/recruiters/CallRequestForm';
+import EducationLevelBadge from '../components/students/EducationLevelBadge';
+import { sortByKeywordRelevance } from '@/lib/keywordScore';
 
 export default function StudentSearch() {
   const [user, setUser] = useState(null);
   const [students, setStudents] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [shortlists, setShortlists] = useState([]);
-  const [filters, setFilters] = useState({ university: '', major: '', grad_year: '', skills: [] });
+  const [filters, setFilters] = useState({ university: '', major: '', grad_year: '', skills: [], education_levels: [] });
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [shortlistJobId, setShortlistJobId] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -86,18 +88,40 @@ export default function StudentSearch() {
   const jobSkills = selectedJob?.required_skills || [];
   const activeSkillFilters = filters.skills;
 
-  const filteredStudents = students.filter(s => {
-    if (filters.university && !s.university?.toLowerCase().includes(filters.university.toLowerCase())) return false;
-    if (filters.major && !s.major?.toLowerCase().includes(filters.major.toLowerCase())) return false;
-    if (filters.grad_year && s.graduation_year !== parseInt(filters.grad_year)) return false;
-    if (activeSkillFilters.length > 0 && !activeSkillFilters.every(sk => (s.skills || []).includes(sk))) return false;
-    // Auto-filter by job's preferred majors if set
-    if (selectedJob?.preferred_majors?.length > 0 && filters.major === '' && !selectedJob.preferred_majors.some(m => s.major?.toLowerCase().includes(m.toLowerCase()))) return false;
-    // Auto-filter by job's grad year range if set
-    if (selectedJob?.grad_year_min && s.graduation_year && s.graduation_year < selectedJob.grad_year_min) return false;
-    if (selectedJob?.grad_year_max && s.graduation_year && s.graduation_year > selectedJob.grad_year_max) return false;
-    return true;
-  });
+  const filteredStudents = (() => {
+    const passed = students.filter(s => {
+      if (filters.university && !s.university?.toLowerCase().includes(filters.university.toLowerCase())) return false;
+      if (filters.major && !s.major?.toLowerCase().includes(filters.major.toLowerCase())) return false;
+      if (filters.grad_year && s.graduation_year !== parseInt(filters.grad_year)) return false;
+      if (activeSkillFilters.length > 0 && !activeSkillFilters.every(sk => (s.skills || []).includes(sk))) return false;
+      if (filters.education_levels.length > 0 && !filters.education_levels.includes(s.education_level)) return false;
+      if (selectedJob?.preferred_majors?.length > 0 && filters.major === '' && !selectedJob.preferred_majors.some(m => s.major?.toLowerCase().includes(m.toLowerCase()))) return false;
+      if (selectedJob?.grad_year_min && s.graduation_year && s.graduation_year < selectedJob.grad_year_min) return false;
+      if (selectedJob?.grad_year_max && s.graduation_year && s.graduation_year > selectedJob.grad_year_max) return false;
+      return true;
+    });
+    // Rank by keyword relevance to the selected job when one is picked.
+    if (!selectedJob) return passed;
+    const jobKeywords = [
+      ...(selectedJob.keywords || []),
+      ...(selectedJob.required_skills || []),
+    ];
+    if (jobKeywords.length === 0) return passed;
+    return sortByKeywordRelevance(
+      passed,
+      (s) => [...(s.keywords || []), ...(s.skills || [])],
+      jobKeywords,
+    );
+  })();
+
+  const toggleEducationLevelFilter = (value) => {
+    setFilters(p => ({
+      ...p,
+      education_levels: p.education_levels.includes(value)
+        ? p.education_levels.filter(v => v !== value)
+        : [...p.education_levels, value],
+    }));
+  };
 
   const toggleSkillFilter = (skill) => {
     setFilters(p => ({
@@ -226,7 +250,12 @@ Return the top 5 candidates ranked by fit. For each, give a match_score (0-100),
              </div>
            )}
            <Avatar className="w-14 h-14 mb-3"><AvatarFallback className="bg-[#5BA4C4] text-white text-lg">{initials}</AvatarFallback></Avatar>
-          <h3 className="font-bold text-white">{student.full_name}</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-bold text-white">{student.full_name}</h3>
+            {student.education_level && (
+              <EducationLevelBadge level={student.education_level} className="bg-white/90 border-white/30" />
+            )}
+          </div>
           <p className="text-white/70 text-sm">{student.major}</p>
           <p className="text-white/50 text-xs">{student.university}</p>
         </div>
@@ -305,6 +334,25 @@ Return the top 5 candidates ranked by fit. For each, give a match_score (0-100),
               <Input placeholder="University..." value={filters.university} onChange={e => setFilters(p => ({ ...p, university: e.target.value }))} />
               <Input placeholder="Major..." value={filters.major} onChange={e => setFilters(p => ({ ...p, major: e.target.value }))} />
               <Input placeholder="Grad year..." value={filters.grad_year} onChange={e => setFilters(p => ({ ...p, grad_year: e.target.value }))} />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-[#7A7870] uppercase tracking-wider mb-2">Education level — tap to toggle</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'high_school', label: 'High school' },
+                  { value: 'university', label: 'University / College' },
+                  { value: 'both', label: 'Both' },
+                ].map(opt => (
+                  <button key={opt.value} type="button" onClick={() => toggleEducationLevelFilter(opt.value)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${filters.education_levels.includes(opt.value) ? 'bg-[#5BA4C4] text-white' : 'bg-[#EAF5FB] text-[#3D87AA] hover:bg-[#A8D4E8]'}`}>
+                    {opt.label}
+                  </button>
+                ))}
+                {filters.education_levels.length > 0 && (
+                  <button onClick={() => setFilters(p => ({ ...p, education_levels: [] }))} className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#E8E4DF] text-[#7A7870] hover:bg-[#d0cbc4]">Clear</button>
+                )}
+              </div>
+              <p className="text-xs text-[#7A7870] mt-1.5">Leave empty to see candidates at any level (including those who haven&apos;t specified).</p>
             </div>
             {jobSkills.length > 0 && (
               <div>

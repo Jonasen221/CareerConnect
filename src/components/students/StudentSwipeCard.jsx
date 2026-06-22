@@ -1,6 +1,7 @@
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
 import { motion, useMotionValue, useTransform, useAnimation } from 'framer-motion';
 import { MapPin, GraduationCap, Linkedin, BookOpen, Play, X, FileText } from 'lucide-react';
+import EducationLevelBadge from './EducationLevelBadge';
 
 const StudentSwipeCard = forwardRef(({ student, onSwipe, isTop }, ref) => {
   const x = useMotionValue(0);
@@ -76,6 +77,9 @@ const StudentSwipeCard = forwardRef(({ student, onSwipe, isTop }, ref) => {
           <span className="text-white/80 font-medium text-sm">{student.major} · {student.university}</span>
         </div>
         <div className="flex flex-wrap gap-2 mt-3">
+          {student.education_level && (
+            <EducationLevelBadge level={student.education_level} className="bg-white/90 border-white/30" />
+          )}
           {student.location && (
             <span className="flex items-center gap-1 text-xs bg-white/20 text-white px-2.5 py-1 rounded-full font-medium">
               <MapPin className="w-3 h-3" />{student.location}

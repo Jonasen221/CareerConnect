@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, Zap, Calendar, MessageCircle, Star, Phone, User, X, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Zap, Calendar, MessageCircle, Star, Phone, User, X, ChevronRight, FolderKanban } from 'lucide-react';
+import { FEATURE_PROJECTS } from '@/lib/featureFlags';
 
 const MAIN_TABS = [
   { label: 'Home', icon: LayoutDashboard, page: 'StudentDashboard' },
@@ -11,6 +12,7 @@ const MAIN_TABS = [
 ];
 
 const MORE_ITEMS = [
+  ...(FEATURE_PROJECTS ? [{ label: 'Projects', icon: FolderKanban, page: 'Projects' }] : []),
   { label: 'Call Requests', icon: Phone, page: 'CallRequests' },
   { label: 'Events', icon: Calendar, page: 'EventsPage' },
   { label: 'My Profile', icon: User, page: 'StudentProfilePage' },

@@ -3,12 +3,13 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, LogOut, Shield, Menu, X, Star, Phone, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, LogOut, Shield, Menu, X, Star, Phone, ArrowLeft, FolderKanban } from 'lucide-react';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import BottomTabNav from './components/layout/BottomTabNav';
 import RecruiterBottomTabNav from './components/layout/RecruiterBottomTabNav';
 import { ADMIN_DEMO_LAYOUT_PADDING_CLASS } from '@/components/admin/AdminDemoBar';
 import { useDemoPreview } from '@/lib/DemoPreviewContext';
+import { FEATURE_PROJECTS } from '@/lib/featureFlags';
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -70,6 +71,7 @@ export default function Layout({ children, currentPageName }) {
   const studentNav = [
           { label: 'Dashboard', icon: LayoutDashboard, page: 'StudentDashboard' },
           { label: 'Explore Jobs', icon: Zap, page: 'JobSwipe' },
+          ...(FEATURE_PROJECTS ? [{ label: 'Projects', icon: FolderKanban, page: 'Projects' }] : []),
           { label: 'Career Arena', icon: Star, page: 'CareerGames' },
           { label: 'Call Requests', icon: Phone, page: 'CallRequests' },
           { label: 'Interviews', icon: Calendar, page: 'InterviewScheduling' },
@@ -82,6 +84,7 @@ export default function Layout({ children, currentPageName }) {
     { label: 'Swipe Talent', icon: Zap, page: 'StudentSwipe' },
     { label: 'Find Talent', icon: Users, page: 'StudentSearch' },
     { label: 'My Jobs', icon: Briefcase, page: 'JobManagement' },
+    ...(FEATURE_PROJECTS ? [{ label: 'Projects', icon: FolderKanban, page: 'Projects' }] : []),
     { label: 'Interviews', icon: Calendar, page: 'InterviewScheduling' },
     { label: 'Events', icon: Calendar, page: 'EventsPage' },
     { label: 'Messages', icon: MessageCircle, page: 'Messages', badge: unreadCount },
@@ -102,7 +105,7 @@ export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
 
   // Pages that are "root" tabs — no back button shown
-  const rootPages = ['StudentDashboard', 'RecruiterDashboard', 'AdminDashboard', 'JobSwipe', 'EventsPage', 'Messages', 'CareerGames', 'StudentSearch', 'JobManagement', 'StudentSwipe', 'RecruiterProfilePage', 'StudentProfilePage', 'CallRequests', 'InterviewScheduling'];
+  const rootPages = ['StudentDashboard', 'RecruiterDashboard', 'AdminDashboard', 'JobSwipe', 'EventsPage', 'Messages', 'CareerGames', 'StudentSearch', 'JobManagement', 'StudentSwipe', 'RecruiterProfilePage', 'StudentProfilePage', 'CallRequests', 'InterviewScheduling', 'Projects'];
   const isSubPage = !rootPages.includes(currentPageName);
 
   const noLayout = ['Home', 'Onboarding'];

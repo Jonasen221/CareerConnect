@@ -8,6 +8,25 @@ import MobileSelect from '../components/layout/MobileSelect';
 import { motion, AnimatePresence } from 'framer-motion';
 import StudentSwipeCard from '../components/students/StudentSwipeCard';
 import { useDemoPreview } from '@/lib/DemoPreviewContext';
+import { sortByKeywordRelevance } from '@/lib/keywordScore';
+
+// Recruiter preference for whether/how to see high-school candidates.
+// Persisted in localStorage so the choice sticks between sessions.
+const EDU_FILTER_KEY = 'cc.recruiterEduFilter';
+const EDU_FILTER_OPTIONS = [
+  { value: 'any', label: 'Everyone' },
+  { value: 'exclude_high_school', label: 'University only (hide high school)' },
+  { value: 'high_school_only', label: 'High school only' },
+];
+const matchesEduFilter = (student, mode) => {
+  if (mode === 'high_school_only') {
+    return student.education_level === 'high_school' || student.education_level === 'both';
+  }
+  if (mode === 'exclude_high_school') {
+    return student.education_level !== 'high_school';
+  }
+  return true;
+};
 
 export default function StudentSwipe() {
   const { skipApprovalGates } = useDemoPreview();
@@ -24,6 +43,10 @@ export default function StudentSwipe() {
   const [swipeCount, setSwipeCount] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({ university: '', major: '', location: '', skill: '', gradYear: '' });
+  const [eduFilter, setEduFilter] = useState(() => {
+    if (typeof window === 'undefined') return 'any';
+    return window.localStorage.getItem(EDU_FILTER_KEY) || 'any';
+  });
   const cardRef = useRef();
 
   useEffect(() => { loadData(); }, []);
@@ -43,10 +66,11 @@ export default function StudentSwipe() {
     setLoading(false);
   };
 
-  const loadStudentsForJob = async (jobId, recruiterEmail, activeFilters) => {
+  const loadStudentsForJob = async (jobId, recruiterEmail, activeFilters, activeEduFilter) => {
     setLoadingStudents(true);
     const email = recruiterEmail || user?.email;
     const f = activeFilters || filters;
+    const edu = activeEduFilter ?? eduFilter;
 
     const allStudentsPromise = base44.entities.StudentProfile.filter({ status: 'approved' });
     const shortlistsPromise = jobId
@@ -67,6 +91,25 @@ export default function StudentSwipe() {
     if (f.location) unseenStudents = unseenStudents.filter(s => s.location?.toLowerCase().includes(f.location.toLowerCase()));
     if (f.skill) unseenStudents = unseenStudents.filter(s => (s.skills || []).some(sk => sk.toLowerCase().includes(f.skill.toLowerCase())));
     if (f.gradYear) unseenStudents = unseenStudents.filter(s => String(s.graduation_year) === String(f.gradYear));
+    unseenStudents = unseenStudents.filter(s => matchesEduFilter(s, edu));
+
+    // Keyword-relevance ranking: when a job is selected, rank candidates by
+    // how well their keywords/skills match the job's keywords/required_skills.
+    const selectedJob = jobId ? jobs.find(j => j.id === jobId) : null;
+    if (selectedJob) {
+      const jobKeywords = [
+        ...(selectedJob.keywords || []),
+        ...(selectedJob.required_skills || []),
+      ];
+      if (jobKeywords.length > 0) {
+        unseenStudents = sortByKeywordRelevance(
+          unseenStudents,
+          (s) => [...(s.keywords || []), ...(s.skills || [])],
+          jobKeywords,
+        );
+      }
+    }
+
     setStudents(unseenStudents);
     setShortlists(myShortlists);
     setCurrentIndex(0);
@@ -78,6 +121,12 @@ export default function StudentSwipe() {
     const id = jobId === 'none' ? null : jobId;
     setSelectedJobId(id || '');
     await loadStudentsForJob(id, user.email);
+  };
+
+  const handleEduFilterChange = async (value) => {
+    setEduFilter(value);
+    if (typeof window !== 'undefined') window.localStorage.setItem(EDU_FILTER_KEY, value);
+    await loadStudentsForJob(selectedJobId || null, user?.email, filters, value);
   };
 
   const handleSwipe = async (direction) => {
@@ -136,7 +185,7 @@ export default function StudentSwipe() {
         </div>
 
         {/* Job selector */}
-        <div className="mb-5 bg-white rounded-2xl border border-slate-100 shadow-sm p-3">
+        <div className="mb-3 bg-white rounded-2xl border border-slate-100 shadow-sm p-3">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Shortlisting for</p>
           <MobileSelect
             value={selectedJobId || 'none'}
@@ -147,6 +196,17 @@ export default function StudentSwipe() {
               ...jobs.map(job => ({ value: job.id, label: `${job.title} · ${job.company}` }))
             ]}
             className="border-0 p-0 h-auto font-semibold text-slate-800 text-base shadow-none"
+          />
+        </div>
+
+        {/* Education-level filter (recruiter opt-in / opt-out of HS candidates) */}
+        <div className="mb-5 bg-white rounded-2xl border border-slate-100 shadow-sm p-3">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Show candidates from</p>
+          <MobileSelect
+            value={eduFilter}
+            onValueChange={handleEduFilterChange}
+            options={EDU_FILTER_OPTIONS}
+            className="border-0 p-0 h-auto font-semibold text-slate-800 text-sm shadow-none"
           />
         </div>
 

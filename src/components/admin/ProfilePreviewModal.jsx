@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { CheckCircle, XCircle, ExternalLink, MapPin, GraduationCap, Briefcase, Globe, Linkedin } from 'lucide-react';
+import EducationLevelBadge from '../students/EducationLevelBadge';
 
 export default function ProfilePreviewModal({ profile, type, open, onOpenChange, onApprove, onReject }) {
   if (!profile) return null;
@@ -32,10 +33,15 @@ export default function ProfilePreviewModal({ profile, type, open, onOpenChange,
               ) : (
                 <p className="text-sm text-slate-500">{profile.title} {profile.company && `at ${profile.company}`}</p>
               )}
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-1 inline-block ${
-                profile.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                profile.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-              }`}>{profile.status}</span>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full inline-block ${
+                  profile.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                  profile.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>{profile.status}</span>
+                {type === 'student' && profile.education_level && (
+                  <EducationLevelBadge level={profile.education_level} variant="full" />
+                )}
+              </div>
             </div>
           </div>
 

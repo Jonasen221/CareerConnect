@@ -10,13 +10,14 @@ const JOB_TYPE_OPTIONS = [{ value: "full_time", label: "Full-time" }, { value: "
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Briefcase, MapPin, DollarSign, Pencil, ChevronDown, ChevronUp, Users, Clock, AlertCircle, FileText, Upload, X } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
+import KeywordPicker from '../components/keywords/KeywordPicker';
 
 const SKILLS = ["Python", "JavaScript", "React", "SQL", "Data Analysis", "Machine Learning", "Finance", "Marketing", "Accounting", "Excel", "Project Management", "Leadership", "Research", "Statistics", "Java", "Product Management", "Sales", "Communication", "Business Development", "Consulting"];
 const LANGUAGES = ["English", "Spanish", "French", "German", "Mandarin", "Portuguese", "Italian", "Japanese", "Korean", "Arabic", "Dutch", "Russian", "Swedish"];
 const JOB_TYPES = [{ value: "full_time", label: "Full-time" }, { value: "part_time", label: "Part-time" }, { value: "internship", label: "Internship" }, { value: "contract", label: "Contract" }];
 const TYPE_STYLE = { full_time: 'bg-[#EAF5FB] text-[#3D87AA]', part_time: 'bg-[#daeef7] text-[#2d6d8e]', internship: 'bg-[#EAF5FB] text-[#5BA4C4]', contract: 'bg-[#d0e8f5] text-[#2E3F4F]' };
 
-const defaultForm = { title: '', description: '', location: '', type: 'internship', salary_range: '', salary_min: '', salary_max: '', required_skills: [], required_languages: [], perks: [], status: 'active', company: '' };
+const defaultForm = { title: '', description: '', location: '', type: 'internship', salary_range: '', salary_min: '', salary_max: '', required_skills: [], required_languages: [], perks: [], status: 'active', company: '', keywords: [] };
 
 export default function JobManagement() {
   const [user, setUser] = useState(null);
@@ -289,6 +290,12 @@ export default function JobManagement() {
                   )}
               </div>
             </div>
+            <KeywordPicker
+              value={formData.keywords || []}
+              onChange={(v) => setFormData(p => ({ ...p, keywords: v }))}
+              label="Keywords"
+              description="Boost matching: candidates whose keywords overlap with these will rank higher in your swipe deck and search results."
+            />
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => {setShowForm(false);setEditingJob(null);}} className="flex-1">Cancel</Button>
               <Button onClick={handleSave} disabled={saving || !formData.title} className="flex-1 bg-[#5BA4C4] hover:bg-[#3D87AA]">{saving ? 'Saving...' : editingJob ? 'Save Changes' : 'Post Job'}</Button>

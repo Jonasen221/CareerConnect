@@ -9,6 +9,24 @@ import { Link, Navigate } from 'react-router-dom';
 import PullToRefresh from '../components/layout/PullToRefresh';
 import AIJobMatcher from '../components/jobs/AIJobMatcher';
 import { useDemoPreview } from '@/lib/DemoPreviewContext';
+import { sortByKeywordRelevance } from '@/lib/keywordScore';
+
+// Rank job listings by relevance to the student's keywords/skills. Falls back
+// to required_skills when a job doesn't have explicit keywords yet (so the
+// ranking still does something useful pre-keyword-adoption).
+const rankJobsForStudent = (jobs, studentProfile) => {
+  if (!studentProfile) return jobs;
+  const viewerKeywords = [
+    ...(studentProfile.keywords || []),
+    ...(studentProfile.skills || []),
+  ];
+  if (viewerKeywords.length === 0) return jobs;
+  return sortByKeywordRelevance(
+    jobs,
+    (job) => [...(job.keywords || []), ...(job.required_skills || [])],
+    viewerKeywords,
+  );
+};
 
 const SUBSCRIPTION_LIVE = new Date() >= new Date('2026-09-01');
 const FREE_DAILY_SWIPES = 3;
@@ -150,7 +168,7 @@ export default function JobSwipe() {
           ? { id: 'preview', major: '', skills: [], resume_url: 'demo', intro_video_url: 'demo' }
           : null)
       );
-      setJobs(allJobs);
+      setJobs(rankJobsForStudent(allJobs, sp));
       if (SUBSCRIPTION_LIVE) {
         const rawSub = subs[0] || { tier: 'free' };
         const sub = { ...rawSub, daily_swipes: TIER_DAILY_SWIPES_LIVE[rawSub.tier] ?? 2 };
@@ -173,7 +191,7 @@ export default function JobSwipe() {
     } else if (studentProfiles.length > 0) {
       setUserType('student');
       setProfile(studentProfiles[0]);
-      setJobs(allJobs);
+      setJobs(rankJobsForStudent(allJobs, studentProfiles[0]));
 
       // If subscriptions are live, use tier-based limits; otherwise flat 3/day for everyone
       if (SUBSCRIPTION_LIVE) {

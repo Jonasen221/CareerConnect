@@ -121,6 +121,8 @@ alter table public.student_profiles
   add column if not exists industries jsonb default '[]'::jsonb,
   add column if not exists work_preferences jsonb default '[]'::jsonb,
   add column if not exists extracted_keywords jsonb,
+  add column if not exists education_level text,
+  add column if not exists keywords jsonb default '[]'::jsonb,
   add column if not exists data jsonb default '{}'::jsonb;
 
 create table if not exists public.recruiter_profiles (
@@ -152,6 +154,7 @@ alter table public.recruiter_profiles
   add column if not exists intro_video_url text,
   add column if not exists phone_number text,
   add column if not exists is_contact_point boolean default false,
+  add column if not exists keywords jsonb default '[]'::jsonb,
   add column if not exists data jsonb default '{}'::jsonb;
 
 create table if not exists public.jobs (
@@ -187,6 +190,7 @@ alter table public.jobs
   add column if not exists perks jsonb default '[]'::jsonb,
   add column if not exists recruiter_video_url text,
   add column if not exists company_logo_url text,
+  add column if not exists keywords jsonb default '[]'::jsonb,
   add column if not exists data jsonb default '{}'::jsonb;
 -- Migrate older installations that used `job_type` to `type`.
 do $$
@@ -477,6 +481,74 @@ create table if not exists public.event_invites (
 alter table public.event_invites add column if not exists data jsonb default '{}'::jsonb;
 
 -- -----------------------------------------------------------------------------
+-- Projects (user-posted, company-posted, and student portfolio items)
+-- -----------------------------------------------------------------------------
+create table if not exists public.projects (
+  id uuid primary key default gen_random_uuid(),
+  created_by text,
+  created_date timestamptz not null default now(),
+  updated_date timestamptz not null default now(),
+  title text,
+  description text,
+  -- kind: 'user' (any user posts an open collab), 'company' (recruiter/firm
+  -- challenge or hackathon), 'portfolio' (past work attached to a profile)
+  kind text not null default 'user',
+  owner_role text,
+  status text default 'open',
+  -- target_audience only relevant for company-posted projects.
+  -- null = no specific targeting.
+  target_audience text,
+  needed_skills jsonb default '[]'::jsonb,
+  keywords jsonb default '[]'::jsonb,
+  link_url text,
+  media_url text,
+  owner_profile_id uuid,
+  data jsonb default '{}'::jsonb
+);
+alter table public.projects
+  add column if not exists kind text not null default 'user',
+  add column if not exists owner_role text,
+  add column if not exists target_audience text,
+  add column if not exists needed_skills jsonb default '[]'::jsonb,
+  add column if not exists keywords jsonb default '[]'::jsonb,
+  add column if not exists link_url text,
+  add column if not exists media_url text,
+  add column if not exists owner_profile_id uuid,
+  add column if not exists data jsonb default '{}'::jsonb;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'projects_kind_check'
+  ) then
+    alter table public.projects
+      add constraint projects_kind_check
+      check (kind in ('user', 'company', 'portfolio'));
+  end if;
+  if not exists (
+    select 1 from pg_constraint where conname = 'projects_target_audience_check'
+  ) then
+    alter table public.projects
+      add constraint projects_target_audience_check
+      check (target_audience is null or target_audience in ('high_school', 'university', 'both'));
+  end if;
+end $$;
+
+create table if not exists public.project_interests (
+  id uuid primary key default gen_random_uuid(),
+  created_by text,
+  created_date timestamptz not null default now(),
+  updated_date timestamptz not null default now(),
+  project_id uuid,
+  user_email text,
+  note text,
+  data jsonb default '{}'::jsonb
+);
+alter table public.project_interests
+  add column if not exists note text,
+  add column if not exists data jsonb default '{}'::jsonb;
+
+-- -----------------------------------------------------------------------------
 -- Row Level Security — permissive MVP defaults
 -- -----------------------------------------------------------------------------
 do $$
@@ -500,7 +572,9 @@ declare
     'service_bookings',
     'events',
     'event_rsvps',
-    'event_invites'
+    'event_invites',
+    'projects',
+    'project_interests'
   ];
 begin
   foreach t in array tables loop
@@ -528,6 +602,11 @@ drop policy if exists "recruiter_profiles: anon select approved" on public.recru
 create policy "recruiter_profiles: anon select approved" on public.recruiter_profiles
   for select to anon
   using ( status = 'approved' );
+
+drop policy if exists "projects: anon select open" on public.projects;
+create policy "projects: anon select open" on public.projects
+  for select to anon
+  using ( coalesce(status, 'open') = 'open' );
 
 -- -----------------------------------------------------------------------------
 -- Storage: public `uploads` bucket for UploadFile()
@@ -570,3 +649,8 @@ create index if not exists idx_interview_requests_student on public.interview_re
 create index if not exists idx_interview_bookings_student on public.interview_bookings (student_email);
 create index if not exists idx_call_requests_student on public.call_requests (student_email);
 create index if not exists idx_event_invites_student on public.event_invites (student_email);
+create index if not exists idx_projects_kind on public.projects (kind);
+create index if not exists idx_projects_status on public.projects (status);
+create index if not exists idx_projects_created_by on public.projects (created_by);
+create index if not exists idx_project_interests_project on public.project_interests (project_id);
+create index if not exists idx_project_interests_user on public.project_interests (user_email);

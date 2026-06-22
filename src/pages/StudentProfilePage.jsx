@@ -9,6 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Save, X, CheckCircle, Clock, AlertCircle, Link as LinkIcon, GraduationCap, MapPin, ArrowLeft, Trash2, Mail, Phone, Video, FileText, Upload } from 'lucide-react';
 import { useDemoPreview } from '@/lib/DemoPreviewContext';
+import EducationLevelBadge from '../components/students/EducationLevelBadge';
+import KeywordPicker from '../components/keywords/KeywordPicker';
+import { FolderKanban, Plus, ExternalLink, Tag } from 'lucide-react';
+
+const EDUCATION_LEVELS = [
+  { value: 'high_school', label: 'High school' },
+  { value: 'university', label: 'University / College' },
+  { value: 'both', label: 'Both' },
+];
 
 const SKILLS = ["Python","JavaScript","React","SQL","Data Analysis","Machine Learning","Finance","Marketing","Accounting","Excel","Project Management","Leadership","Research","Statistics","Java","Product Management","Sales","Communication","Business Development","Consulting"];
 const WORK_PREFS = [{ value: "full_time", label: "Full-time" },{ value: "part_time", label: "Part-time" },{ value: "internship", label: "Internship" },{ value: "remote", label: "Remote" },{ value: "hybrid", label: "Hybrid" },{ value: "on_site", label: "On-site" }];
@@ -27,8 +36,22 @@ export default function StudentProfilePage() {
   const [loading, setLoading] = useState(true);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [portfolio, setPortfolio] = useState([]);
 
   useEffect(() => { loadProfile(); }, [skipProfileGates]);
+
+  useEffect(() => {
+    if (!profile?.email || profile.id === 'preview') {
+      setPortfolio([]);
+      return;
+    }
+    let cancelled = false;
+    base44.entities.Project
+      .filter({ created_by: profile.email, kind: 'portfolio' }, '-created_date', 50)
+      .then(rows => { if (!cancelled) setPortfolio(rows); })
+      .catch(() => { if (!cancelled) setPortfolio([]); });
+    return () => { cancelled = true; };
+  }, [profile?.email, profile?.id]);
 
   const loadProfile = async () => {
     const u = await base44.auth.me();
@@ -178,7 +201,12 @@ export default function StudentProfilePage() {
             ? <Input value={formData.full_name || ''} onChange={e => setFormData(p => ({ ...p, full_name: e.target.value }))} className="text-white bg-white/20 border-white/30 text-xl font-bold placeholder-white/50 mb-2" />
             : <div><p className="text-xl font-bold text-white">{profile.full_name?.split(' ')[0]}</p><p className="text-white/90 font-semibold">{profile.full_name?.split(' ').slice(1).join(' ')}</p></div>
           }
-          <p className="text-white/70 mt-1">{profile.university} · {profile.major}</p>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            {profile.education_level && (
+              <EducationLevelBadge level={profile.education_level} variant="full" className="bg-white/90 border-white/40" />
+            )}
+            <p className="text-white/70">{profile.university} · {profile.major}</p>
+          </div>
         </div>
 
         <div className="p-8 space-y-6">
@@ -214,6 +242,13 @@ export default function StudentProfilePage() {
               {editing
                 ? <Select value={formData.nationality || ''} onValueChange={v => setFormData(p => ({ ...p, nationality: v }))}><SelectTrigger className="mt-1.5 bg-white text-slate-800"><SelectValue /></SelectTrigger><SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select>
                 : <p className="mt-1 text-slate-800 dark:text-slate-100 font-medium">{profile.nationality || '—'}</p>
+              }
+            </div>
+            <div>
+              <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Education level</Label>
+              {editing
+                ? <Select value={formData.education_level || ''} onValueChange={v => setFormData(p => ({ ...p, education_level: v }))}><SelectTrigger className="mt-1.5 bg-white text-slate-800"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{EDUCATION_LEVELS.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}</SelectContent></Select>
+                : <p className="mt-1 text-slate-800 dark:text-slate-100 font-medium">{profile.education_level ? (EDUCATION_LEVELS.find(l => l.value === profile.education_level)?.label || profile.education_level) : '—'}</p>
               }
             </div>
             </div>
@@ -321,6 +356,67 @@ export default function StudentProfilePage() {
                 </label>
               )}
             </div>
+          </div>
+
+          {/* Keywords — used by search + swipe ranking */}
+          <div>
+            {editing ? (
+              <KeywordPicker
+                value={formData.keywords || []}
+                onChange={(v) => setFormData(p => ({ ...p, keywords: v }))}
+                label="Keywords"
+                description="Pick from the categories or add your own — recruiters and project owners use these to find people like you."
+              />
+            ) : (
+              <>
+                <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block flex items-center gap-1">
+                  <Tag className="w-3.5 h-3.5" /> Keywords
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {(profile.keywords || []).length > 0
+                    ? profile.keywords.map(k => <span key={k} className="px-3 py-1 bg-[#EAF5FB] text-[#3D87AA] rounded-full text-sm font-medium">{k}</span>)
+                    : <p className="text-slate-400 text-sm">No keywords yet. Add some to improve match quality.</p>}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Portfolio projects — past work attached to this profile */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <FolderKanban className="w-3.5 h-3.5" /> Portfolio
+              </Label>
+              <button
+                type="button"
+                onClick={() => navigate(`${createPageUrl('Projects')}?new=portfolio`)}
+                className="text-xs font-semibold text-[#3D87AA] hover:text-[#2d6d8e] flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add portfolio project
+              </button>
+            </div>
+            {portfolio.length === 0 ? (
+              <p className="text-sm text-slate-400">No portfolio projects yet. Showcase past work to stand out to recruiters.</p>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {portfolio.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => navigate(`${createPageUrl('Projects')}?id=${p.id}`)}
+                    className="text-left bg-slate-50 hover:bg-[#EAF5FB] border border-slate-100 hover:border-[#A8D4E8] rounded-2xl p-4 transition-colors"
+                  >
+                    <p className="font-semibold text-slate-800 line-clamp-1">{p.title || 'Untitled'}</p>
+                    <p className="text-xs text-slate-500 line-clamp-2 mt-1">{p.description || '—'}</p>
+                    {p.link_url && (
+                      <span className="inline-flex items-center gap-1 mt-2 text-[11px] text-[#3D87AA] font-medium">
+                        <ExternalLink className="w-3 h-3" /> {p.link_url.replace(/^https?:\/\//, '').slice(0, 40)}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

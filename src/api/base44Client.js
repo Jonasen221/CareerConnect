@@ -42,6 +42,8 @@ const ENTITY_TABLES = {
   Event: 'events',
   EventRSVP: 'event_rsvps',
   EventInvite: 'event_invites',
+  Project: 'projects',
+  ProjectInterest: 'project_interests',
   // "User" in the old admin UI was really the auth user list. We route it to
   // the profiles table (one row per auth user), which is where role / metadata
   // live in the Supabase schema.
@@ -68,18 +70,19 @@ const TABLE_COLUMNS = {
     'graduation_year', 'graduation_month', 'location', 'nationality',
     'linkedin_url', 'phone_number', 'skills', 'languages', 'industries',
     'work_preferences', 'education', 'experience', 'extracted_keywords',
+    'education_level', 'keywords',
     'level', 'status', 'industry',
   ],
   recruiter_profiles: [
     ...COMMON, 'full_name', 'email', 'company', 'role', 'title', 'photo_url',
     'company_logo_url', 'company_website', 'intro_video_url', 'bio', 'status',
-    'industry', 'location', 'phone_number', 'is_contact_point',
+    'industry', 'location', 'phone_number', 'is_contact_point', 'keywords',
   ],
   jobs: [
     ...COMMON, 'title', 'company', 'description', 'requirements', 'location',
     'industry', 'salary_range', 'salary_min', 'salary_max', 'type',
     'required_skills', 'required_languages', 'perks', 'recruiter_video_url',
-    'company_logo_url', 'status',
+    'company_logo_url', 'status', 'keywords',
   ],
   matches: [
     ...COMMON, 'student_email', 'recruiter_email', 'job_id', 'job_title',
@@ -130,6 +133,14 @@ const TABLE_COLUMNS = {
   ],
   event_rsvps: [...COMMON, 'event_id', 'status'],
   event_invites: [...COMMON, 'event_id', 'student_email', 'status'],
+  projects: [
+    ...COMMON, 'title', 'description', 'kind', 'owner_role', 'status',
+    'target_audience', 'needed_skills', 'keywords', 'link_url', 'media_url',
+    'owner_profile_id',
+  ],
+  project_interests: [
+    ...COMMON, 'project_id', 'user_email', 'note',
+  ],
   profiles: [
     'id', 'email', 'full_name', 'role', 'photo_url', 'resume_url',
     'intro_video_url', 'created_date', 'updated_date',
