@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, X, ChevronRight, FolderKanban } from 'lucide-react';
+import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, X, ChevronRight, FolderKanban, Sparkles, Settings as SettingsIcon } from 'lucide-react';
 import { FEATURE_PROJECTS } from '@/lib/featureFlags';
 
 const MAIN_TABS = [
   { label: 'Dashboard', icon: LayoutDashboard, page: 'RecruiterDashboard' },
   { label: 'Swipe', icon: Zap, page: 'StudentSwipe' },
-  { label: 'Search', icon: Users, page: 'StudentSearch' },
+  { label: 'Connect', icon: Sparkles, page: 'Connect' },
   { label: 'Messages', icon: MessageCircle, page: 'Messages' },
 ];
 
 const MORE_ITEMS = [
+  { label: 'Find Talent', icon: Users, page: 'StudentSearch' },
   { label: 'My Jobs', icon: Briefcase, page: 'JobManagement' },
   ...(FEATURE_PROJECTS ? [{ label: 'Projects', icon: FolderKanban, page: 'Projects' }] : []),
   { label: 'Events', icon: Calendar, page: 'EventsPage' },
   { label: 'My Profile', icon: User, page: 'RecruiterProfilePage' },
+  { label: 'Settings', icon: SettingsIcon, page: 'Settings' },
 ];
 
 const scrollPositions = {};

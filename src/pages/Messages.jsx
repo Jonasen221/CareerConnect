@@ -96,9 +96,22 @@ export default function Messages() {
   };
 
   const getOtherUserName = (match) => {
+    // F4 connection-kind matches carry the peer names in match.data, regardless
+    // of which slot they ended up in (we use canonical-order user_a/user_b).
+    if (match.data?.kind === 'connection' || match.data?.kind === 'peer_connection') {
+      const isA = match.student_email === user?.email;
+      return isA ? (match.data.peer_b_name || match.recruiter_email) : (match.data.peer_a_name || match.student_email);
+    }
     return match.student_email === user?.email ?
     match.company :
     `Student`;
+  };
+
+  const getMatchSubtitle = (match) => {
+    if (match.data?.kind === 'connection' || match.data?.kind === 'peer_connection') {
+      return 'Direct connection';
+    }
+    return match.job_title;
   };
 
   if (loading) return <div className="flex items-center justify-center min-h-screen bg-slate-50"><div className="w-6 h-6 border-2 border-[#5BA4C4] border-t-transparent rounded-full animate-spin" /></div>;
@@ -155,8 +168,8 @@ export default function Messages() {
 
                           <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-slate-800">{match.company}</p>
-                              <p className="text-sm text-slate-500 mt-0.5">{match.job_title}</p>
+                              <p className="font-semibold text-slate-800">{getOtherUserName(match)}</p>
+                              <p className="text-sm text-slate-500 mt-0.5">{getMatchSubtitle(match)}</p>
                             </div>
                             {unreadCount > 0 &&
                           <div className="ml-2 w-6 h-6 bg-[#5BA4C4] text-white text-xs rounded-full flex items-center justify-center font-bold flex-shrink-0">
@@ -267,8 +280,8 @@ export default function Messages() {
                 <ArrowLeft className="w-5 h-5 text-slate-600" />
               </button>
               <div>
-                <p className="font-semibold text-slate-800">{selectedMatch.company}</p>
-                <p className="text-sm text-slate-500">{selectedMatch.job_title}</p>
+                <p className="font-semibold text-slate-800">{getOtherUserName(selectedMatch)}</p>
+                <p className="text-sm text-slate-500">{getMatchSubtitle(selectedMatch)}</p>
               </div>
             </div>
 

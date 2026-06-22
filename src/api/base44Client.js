@@ -46,6 +46,8 @@ const ENTITY_TABLES = {
   ProjectInterest: 'project_interests',
   AppSettings: 'app_settings',
   AdminAction: 'admin_actions',
+  Connection: 'connections',
+  ConnectionSwipe: 'connection_swipes',
   // "User" in the old admin UI was really the auth user list. We route it to
   // the profiles table (one row per auth user), which is where role / metadata
   // live in the Supabase schema.
@@ -76,12 +78,14 @@ const TABLE_COLUMNS = {
     'level', 'status', 'industry',
     'flagged', 'internal_notes', 'suspension_reason', 'verified_student',
     'notification_message',
+    'connect_opt_out', 'connect_audience',
   ],
   recruiter_profiles: [
     ...COMMON, 'full_name', 'email', 'company', 'role', 'title', 'photo_url',
     'company_logo_url', 'company_website', 'intro_video_url', 'bio', 'status',
     'industry', 'location', 'phone_number', 'is_contact_point', 'keywords',
     'flagged', 'internal_notes', 'suspension_reason', 'notification_message',
+    'connect_opt_out', 'connect_audience',
   ],
   jobs: [
     ...COMMON, 'title', 'company', 'description', 'requirements', 'location',
@@ -154,6 +158,14 @@ const TABLE_COLUMNS = {
   admin_actions: [
     'id', 'created_date', 'admin_id', 'admin_email', 'action',
     'target_type', 'target_id', 'target_label', 'reason', 'notes', 'metadata',
+  ],
+  connection_swipes: [
+    ...COMMON, 'swiper_email', 'swiper_role', 'target_email', 'target_role',
+    'direction',
+  ],
+  connections: [
+    ...COMMON, 'user_a_email', 'user_b_email', 'user_a_role', 'user_b_role',
+    'user_a_name', 'user_b_name', 'status', 'initiated_by_email', 'match_id',
   ],
   profiles: [
     'id', 'email', 'full_name', 'role', 'photo_url', 'resume_url',

@@ -51,6 +51,7 @@ import AdminCandidates from './pages/AdminCandidates';
 import AdminDashboard from './pages/AdminDashboard';
 import CallRequests from './pages/CallRequests';
 import CareerGames from './pages/CareerGames';
+import Connect from './pages/Connect';
 import EventsPage from './pages/EventsPage';
 import Home from './pages/Home';
 import IntegrationsHub from './pages/IntegrationsHub';
@@ -61,6 +62,7 @@ import Onboarding from './pages/Onboarding';
 import Projects from './pages/Projects';
 import RecruiterDashboard from './pages/RecruiterDashboard';
 import RecruiterProfilePage from './pages/RecruiterProfilePage';
+import Settings from './pages/Settings';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentProfilePage from './pages/StudentProfilePage';
 import StudentSearch from './pages/StudentSearch';
@@ -74,6 +76,7 @@ export const PAGES = {
     "AdminDashboard": AdminDashboard,
     "CallRequests": CallRequests,
     "CareerGames": CareerGames,
+    "Connect": Connect,
     "EventsPage": EventsPage,
     "Home": Home,
     "IntegrationsHub": IntegrationsHub,
@@ -84,6 +87,7 @@ export const PAGES = {
     "Projects": Projects,
     "RecruiterDashboard": RecruiterDashboard,
     "RecruiterProfilePage": RecruiterProfilePage,
+    "Settings": Settings,
     "StudentDashboard": StudentDashboard,
     "StudentProfilePage": StudentProfilePage,
     "StudentSearch": StudentSearch,
