@@ -11,6 +11,7 @@ import AdminDemoBar from '@/components/admin/AdminDemoBar';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
+import ReferralLanding from '@/pages/ReferralLanding';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -42,6 +43,9 @@ const AuthenticatedApp = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/logout" element={<Navigate to="/login" replace />} />
+
+      {/* Public referral landing — no Layout, works for anon visitors */}
+      <Route path="/r/:code" element={<ReferralLanding />} />
 
       {/* App routes */}
       <Route path="/" element={

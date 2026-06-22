@@ -48,6 +48,10 @@ const ENTITY_TABLES = {
   AdminAction: 'admin_actions',
   Connection: 'connections',
   ConnectionSwipe: 'connection_swipes',
+  ReferralLink: 'referral_links',
+  ReferralClick: 'referral_clicks',
+  ReferralSignup: 'referral_signups',
+  OfferEvent: 'offer_events',
   // "User" in the old admin UI was really the auth user list. We route it to
   // the profiles table (one row per auth user), which is where role / metadata
   // live in the Supabase schema.
@@ -166,6 +170,24 @@ const TABLE_COLUMNS = {
   connections: [
     ...COMMON, 'user_a_email', 'user_b_email', 'user_a_role', 'user_b_role',
     'user_a_name', 'user_b_name', 'status', 'initiated_by_email', 'match_id',
+  ],
+  referral_links: [
+    ...COMMON, 'recruiter_email', 'recruiter_name', 'company',
+    'target_type', 'target_id', 'target_label', 'target_summary', 'code',
+    'label', 'is_active', 'total_clicks', 'total_signups', 'total_offers',
+  ],
+  referral_clicks: [
+    ...COMMON, 'link_id', 'link_code', 'visitor_email', 'visitor_fingerprint',
+    'referrer', 'user_agent',
+  ],
+  referral_signups: [
+    ...COMMON, 'link_id', 'link_code', 'signup_email', 'signup_role',
+  ],
+  offer_events: [
+    ...COMMON, 'recruiter_email', 'recruiter_name', 'company', 'candidate_email',
+    'candidate_name', 'target_type', 'target_id', 'target_label', 'offer_summary',
+    'status', 'platform_attributed', 'attributed_link_id', 'attributed_link_code',
+    'decision_date', 'notes',
   ],
   profiles: [
     'id', 'email', 'full_name', 'role', 'photo_url', 'resume_url',

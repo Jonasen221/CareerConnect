@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, LogOut, Shield, Menu, X, Star, Phone, ArrowLeft, FolderKanban, ShieldCheck, Sparkles, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, LogOut, Shield, Menu, X, Star, Phone, ArrowLeft, FolderKanban, ShieldCheck, Sparkles, Share2, Settings as SettingsIcon } from 'lucide-react';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import BottomTabNav from './components/layout/BottomTabNav';
 import RecruiterBottomTabNav from './components/layout/RecruiterBottomTabNav';
@@ -86,6 +86,7 @@ export default function Layout({ children, currentPageName }) {
     { label: 'Swipe Talent', icon: Zap, page: 'StudentSwipe' },
     { label: 'Find Talent', icon: Users, page: 'StudentSearch' },
     { label: 'My Jobs', icon: Briefcase, page: 'JobManagement' },
+    { label: 'Referrals', icon: Share2, page: 'Referrals' },
     { label: 'Connect', icon: Sparkles, page: 'Connect' },
     ...(FEATURE_PROJECTS ? [{ label: 'Projects', icon: FolderKanban, page: 'Projects' }] : []),
     { label: 'Interviews', icon: Calendar, page: 'InterviewScheduling' },
@@ -110,7 +111,7 @@ export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
 
   // Pages that are "root" tabs — no back button shown
-  const rootPages = ['StudentDashboard', 'RecruiterDashboard', 'AdminDashboard', 'AdminCandidates', 'JobSwipe', 'EventsPage', 'Messages', 'CareerGames', 'StudentSearch', 'JobManagement', 'StudentSwipe', 'RecruiterProfilePage', 'StudentProfilePage', 'CallRequests', 'InterviewScheduling', 'Projects', 'Connect', 'Settings'];
+  const rootPages = ['StudentDashboard', 'RecruiterDashboard', 'AdminDashboard', 'AdminCandidates', 'JobSwipe', 'EventsPage', 'Messages', 'CareerGames', 'StudentSearch', 'JobManagement', 'StudentSwipe', 'RecruiterProfilePage', 'StudentProfilePage', 'CallRequests', 'InterviewScheduling', 'Projects', 'Connect', 'Settings', 'Referrals'];
   const isSubPage = !rootPages.includes(currentPageName);
 
   const noLayout = ['Home', 'Onboarding'];

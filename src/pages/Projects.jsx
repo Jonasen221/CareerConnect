@@ -10,11 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   FolderKanban, Plus, Compass, User, ArrowLeft, ArrowRight, ExternalLink,
   Tag, Users as UsersIcon, CheckCircle, Lock, Sparkles, Mail, Trash2,
-  Upload, FileText, X,
+  Upload, FileText, X, Share2,
 } from 'lucide-react';
 import KeywordPicker from '@/components/keywords/KeywordPicker';
 import { sortByKeywordRelevance } from '@/lib/keywordScore';
 import { FEATURE_PROJECTS } from '@/lib/featureFlags';
+import ShareLinkModal from '@/components/referrals/ShareLinkModal';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -285,6 +286,7 @@ const ProjectDetail = ({ project, user, viewerEducationLevel, onClose, onChanged
   const [submitting, setSubmitting] = useState(false);
   const [note, setNote] = useState('');
   const [editing, setEditing] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   const isOwner = !!user && project.created_by === user.email;
 
@@ -493,11 +495,29 @@ const ProjectDetail = ({ project, user, viewerEducationLevel, onClose, onChanged
                 <Button variant="outline" onClick={toggleStatus} disabled={submitting}>
                   {project.status === 'open' ? 'Close project' : 'Reopen project'}
                 </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowShare(true)}
+                  className="text-[#3D87AA] border-[#A8D4E8] hover:bg-[#EAF5FB]"
+                >
+                  <Share2 className="w-4 h-4 mr-1" /> Share link
+                </Button>
                 <Button variant="outline" onClick={() => onDelete?.(project)} className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
                   <Trash2 className="w-4 h-4 mr-1" /> Delete
                 </Button>
               </div>
             )}
+
+            <ShareLinkModal
+              open={showShare}
+              onOpenChange={(open) => { if (!open) setShowShare(false); }}
+              target={{ type: 'project', id: project.id, label: project.title, summary: project.description }}
+              recruiter={{
+                email: user?.email,
+                full_name: user?.full_name,
+                company: null,
+              }}
+            />
           </div>
         )}
       </div>

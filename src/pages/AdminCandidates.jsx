@@ -22,6 +22,11 @@ import {
   Building2,
   Search,
   RefreshCw,
+  Share2,
+  Link2,
+  MousePointerClick,
+  UserPlus,
+  Handshake,
 } from 'lucide-react';
 import StatusPill, {
   STATUS_OPTIONS,
@@ -253,6 +258,127 @@ function ProfileList({ profiles, kind, loading, onSelect }) {
       {profiles.map((p) => (
         <CandidateRow key={p.id} profile={p} kind={kind} onClick={() => onSelect(p)} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * Platform-wide referral & offer analytics. Reads everything (admins can see
+ * across recruiters) and renders top-line counters + top-performing links and
+ * recent offers.
+ */
+function ReferralsPanel() {
+  const [loading, setLoading] = useState(true);
+  const [links, setLinks] = useState([]);
+  const [offers, setOffers] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const [linkRows, offerRows] = await Promise.all([
+          base44.entities.ReferralLink.list(),
+          base44.entities.OfferEvent.list(),
+        ]);
+        setLinks(linkRows || []);
+        setOffers(offerRows || []);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const totals = useMemo(() => ({
+    links: links.length,
+    activeLinks: links.filter((l) => l.is_active).length,
+    clicks: links.reduce((s, l) => s + (l.total_clicks ?? 0), 0),
+    signups: links.reduce((s, l) => s + (l.total_signups ?? 0), 0),
+    offers: offers.length,
+    accepted: offers.filter((o) => o.status === 'accepted').length,
+    platformAssisted: offers.filter((o) => o.platform_attributed).length,
+  }), [links, offers]);
+
+  const topLinks = useMemo(() => (
+    links.slice().sort((a, b) => (b.total_clicks ?? 0) - (a.total_clicks ?? 0)).slice(0, 10)
+  ), [links]);
+
+  const recentOffers = useMemo(() => (
+    offers.slice().sort((a, b) => new Date(b.created_date) - new Date(a.created_date)).slice(0, 10)
+  ), [offers]);
+
+  if (loading) {
+    return <p className="text-slate-400 text-center py-12">Loading referrals…</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <AdminMetric icon={Link2} label="Links" value={totals.links} sub={`${totals.activeLinks} active`} />
+        <AdminMetric icon={MousePointerClick} label="Clicks" value={totals.clicks} />
+        <AdminMetric icon={UserPlus} label="Signups" value={totals.signups} />
+        <AdminMetric icon={Handshake} label="Offers" value={totals.offers} sub={`${totals.accepted} accepted · ${totals.platformAssisted} platform-assisted`} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <p className="font-semibold text-[#2E3F4F] mb-3">Top links by clicks</p>
+          {topLinks.length === 0 ? (
+            <p className="text-sm text-slate-400">No links yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {topLinks.map((link) => (
+                <div key={link.id} className="flex items-center gap-2 text-sm">
+                  <code className="text-xs text-slate-500 font-mono w-20 flex-shrink-0 truncate">{link.code}</code>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-700 truncate">{link.label || link.target_label || '—'}</p>
+                    <p className="text-xs text-slate-400 truncate">{link.recruiter_email}</p>
+                  </div>
+                  <div className="text-xs text-slate-600 flex-shrink-0 text-right">
+                    <p><strong>{link.total_clicks ?? 0}</strong> clicks</p>
+                    <p className="text-slate-400">{link.total_signups ?? 0} signups</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <p className="font-semibold text-[#2E3F4F] mb-3">Recent offers</p>
+          {recentOffers.length === 0 ? (
+            <p className="text-sm text-slate-400">No offers logged yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {recentOffers.map((o) => (
+                <div key={o.id} className="text-sm border-b border-slate-50 pb-2 last:border-b-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-slate-700 truncate">
+                      <span className="font-semibold">{o.recruiter_email}</span> → {o.candidate_email}
+                    </p>
+                    <span className="text-xs font-semibold uppercase text-slate-500">{o.status}</span>
+                  </div>
+                  <p className="text-xs text-slate-400 truncate">
+                    {o.target_label || o.target_type || '—'}
+                    {o.platform_attributed && <span className="ml-2 text-[#3D87AA]">· platform-assisted</span>}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminMetric({ icon: Icon, label, value, sub }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 p-3">
+      <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider">
+        <Icon className="w-3.5 h-3.5" /> {label}
+      </div>
+      <p className="text-2xl font-bold text-[#2E3F4F] mt-1">{value}</p>
+      {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -611,6 +737,9 @@ export default function AdminCandidates() {
             <TabsTrigger value="audit" className="data-[state=active]:bg-[#5BA4C4] data-[state=active]:text-white">
               <ClipboardList className="w-4 h-4 mr-1.5" /> Audit log
             </TabsTrigger>
+            <TabsTrigger value="referrals" className="data-[state=active]:bg-[#5BA4C4] data-[state=active]:text-white">
+              <Share2 className="w-4 h-4 mr-1.5" /> Referrals
+            </TabsTrigger>
             <TabsTrigger value="settings" className="data-[state=active]:bg-[#5BA4C4] data-[state=active]:text-white">
               <SettingsIcon className="w-4 h-4 mr-1.5" /> Settings
             </TabsTrigger>
@@ -656,6 +785,10 @@ export default function AdminCandidates() {
 
           <TabsContent value="audit" className="mt-4">
             <AuditLogPanel entries={auditEntries} loading={loadingAudit} onRefresh={loadAudit} />
+          </TabsContent>
+
+          <TabsContent value="referrals" className="mt-4">
+            <ReferralsPanel />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-4">

@@ -135,6 +135,18 @@ export const AuthProvider = ({ children }) => {
 
     const password = `cc-public-${email}-2026`;
 
+    // F6: if a referral landing stashed a code in sessionStorage, attribute
+    // the resulting account once the auth flow completes (whether sign-in or
+    // sign-up). Imported lazily so this module stays light for cold starts.
+    const attributeReferral = async (resultEmail) => {
+      try {
+        const { applyPendingReferralAttribution } = await import('@/lib/referrals');
+        await applyPendingReferralAttribution({ user: { email: resultEmail } });
+      } catch {
+        /* ignored — attribution is best-effort */
+      }
+    };
+
     const signIn = await supabase.auth.signInWithPassword({ email, password });
     if (!signIn.error) {
       await hydrate(signIn.data.session);
@@ -145,6 +157,7 @@ export const AuthProvider = ({ children }) => {
           .update({ full_name: name, updated_date: new Date().toISOString() })
           .eq('id', signIn.data.user.id);
       }
+      await attributeReferral(signIn.data.user?.email ?? email);
       return signIn.data;
     }
 
@@ -161,6 +174,7 @@ export const AuthProvider = ({ children }) => {
     if (signUp.error) throw signUp.error;
     if (signUp.data.session) {
       await hydrate(signUp.data.session);
+      await attributeReferral(signUp.data.user?.email ?? email);
       return signUp.data;
     }
 
@@ -170,6 +184,7 @@ export const AuthProvider = ({ children }) => {
     const retry = await supabase.auth.signInWithPassword({ email, password });
     if (retry.error) throw retry.error;
     await hydrate(retry.data.session);
+    await attributeReferral(retry.data.user?.email ?? email);
     return retry.data;
   }, [hydrate]);
 

@@ -8,9 +8,10 @@ import MobileSelect from '../components/layout/MobileSelect';
 
 const JOB_TYPE_OPTIONS = [{ value: "full_time", label: "Full-time" }, { value: "part_time", label: "Part-time" }, { value: "internship", label: "Internship" }, { value: "contract", label: "Contract" }];
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Briefcase, MapPin, DollarSign, Pencil, ChevronDown, ChevronUp, Users, Clock, AlertCircle, FileText, Upload, X } from 'lucide-react';
+import { Plus, Briefcase, MapPin, DollarSign, Pencil, ChevronDown, ChevronUp, Users, Clock, AlertCircle, FileText, Upload, X, Share2 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import KeywordPicker from '../components/keywords/KeywordPicker';
+import ShareLinkModal from '../components/referrals/ShareLinkModal';
 
 const SKILLS = ["Python", "JavaScript", "React", "SQL", "Data Analysis", "Machine Learning", "Finance", "Marketing", "Accounting", "Excel", "Project Management", "Leadership", "Research", "Statistics", "Java", "Product Management", "Sales", "Communication", "Business Development", "Consulting"];
 const LANGUAGES = ["English", "Spanish", "French", "German", "Mandarin", "Portuguese", "Italian", "Japanese", "Korean", "Arabic", "Dutch", "Russian", "Swedish"];
@@ -32,6 +33,7 @@ export default function JobManagement() {
   const [uploadingSpec, setUploadingSpec] = useState(false);
   const [expandedJob, setExpandedJob] = useState(null);
   const [applicants, setApplicants] = useState({});
+  const [shareTarget, setShareTarget] = useState(null);
 
   useEffect(() => {loadData();}, []);
 
@@ -161,6 +163,7 @@ export default function JobManagement() {
                      </div>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => setShareTarget({ type: 'job', id: job.id, label: job.title, summary: job.description })} className="bg-white text-[#3D87AA] px-3 text-xs font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors border border-[#A8D4E8] shadow-sm hover:bg-[#EAF5FB] h-8"><Share2 className="w-3.5 h-3.5" /></Button>
                     <Button size="sm" variant="outline" onClick={() => openEdit(job)} className="bg-slate-200 text-slate-600 px-3 text-xs font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input shadow-sm hover:bg-accent hover:text-accent-foreground h-8"><Pencil className="w-3.5 h-3.5" /></Button>
                     <Button size="sm" variant="outline" onClick={() => toggleStatus(job)} className="bg-slate-200 text-slate-600 px-3 text-xs font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input shadow-sm hover:bg-accent hover:text-accent-foreground h-8">
                       {job.status === 'active' ? 'Close' : 'Reopen'}
@@ -303,6 +306,17 @@ export default function JobManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ShareLinkModal
+        open={!!shareTarget}
+        onOpenChange={(open) => { if (!open) setShareTarget(null); }}
+        target={shareTarget}
+        recruiter={{
+          email: user?.email,
+          full_name: user?.full_name ?? profile?.full_name,
+          company: profile?.company,
+        }}
+      />
       </div>
     </div>);
 

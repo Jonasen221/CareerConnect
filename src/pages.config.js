@@ -62,6 +62,7 @@ import Onboarding from './pages/Onboarding';
 import Projects from './pages/Projects';
 import RecruiterDashboard from './pages/RecruiterDashboard';
 import RecruiterProfilePage from './pages/RecruiterProfilePage';
+import Referrals from './pages/Referrals';
 import Settings from './pages/Settings';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentProfilePage from './pages/StudentProfilePage';
@@ -87,6 +88,7 @@ export const PAGES = {
     "Projects": Projects,
     "RecruiterDashboard": RecruiterDashboard,
     "RecruiterProfilePage": RecruiterProfilePage,
+    "Referrals": Referrals,
     "Settings": Settings,
     "StudentDashboard": StudentDashboard,
     "StudentProfilePage": StudentProfilePage,

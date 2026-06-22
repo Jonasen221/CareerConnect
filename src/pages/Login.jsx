@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import SupabaseStatusBanner from '@/components/auth/SupabaseStatusBanner';
+import { stashPendingReferral } from '@/lib/referrals';
 
 export default function Login() {
   const { signInOrSignUp, isAuthenticated, isLoadingAuth } = useAuth();
@@ -17,6 +18,13 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // F6: stash referral codes that arrive as ?ref=ABC1234 so the post-signup
+  // attribution hook in AuthContext can pick them up.
+  useEffect(() => {
+    const code = params.get('ref');
+    if (code) stashPendingReferral(code);
+  }, [params]);
 
   // Already signed in: bounce out of the login page safely.
   useEffect(() => {

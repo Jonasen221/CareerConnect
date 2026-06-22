@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, X, ChevronRight, FolderKanban, Sparkles, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, X, ChevronRight, FolderKanban, Sparkles, Share2, Settings as SettingsIcon } from 'lucide-react';
 import { FEATURE_PROJECTS } from '@/lib/featureFlags';
 
 const MAIN_TABS = [
@@ -14,6 +14,7 @@ const MAIN_TABS = [
 const MORE_ITEMS = [
   { label: 'Find Talent', icon: Users, page: 'StudentSearch' },
   { label: 'My Jobs', icon: Briefcase, page: 'JobManagement' },
+  { label: 'Referrals', icon: Share2, page: 'Referrals' },
   ...(FEATURE_PROJECTS ? [{ label: 'Projects', icon: FolderKanban, page: 'Projects' }] : []),
   { label: 'Events', icon: Calendar, page: 'EventsPage' },
   { label: 'My Profile', icon: User, page: 'RecruiterProfilePage' },
