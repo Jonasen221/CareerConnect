@@ -5,6 +5,14 @@ import { Input } from "@/components/ui/input";
 import MobileSelect from '../layout/MobileSelect';
 import { Pencil, Trash2, Check, AlertCircle } from 'lucide-react';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import StatusPill, { STATUS_OPTIONS, FlaggedPill, VerifiedStudentPill } from './StatusPill';
+import { logAdminAction } from '@/lib/adminLog';
+import { useAuth } from '@/lib/AuthContext';
+
+const STATUS_SELECT_OPTIONS = STATUS_OPTIONS.map((value) => ({
+  value,
+  label: value.charAt(0).toUpperCase() + value.slice(1),
+}));
 
 const EMPTY = { full_name: '', university: '', major: '', graduation_year: '', location: '', status: 'pending' };
 
@@ -18,7 +26,7 @@ function StudentForm({ student, onSave, onCancel }) {
         <Input placeholder="Major / Course" value={form.major} onChange={(e) => setForm((f) => ({ ...f, major: e.target.value }))} className="text-black" />
         <Input placeholder="Graduation year (e.g. 2025)" type="number" value={form.graduation_year} onChange={(e) => setForm((f) => ({ ...f, graduation_year: Number(e.target.value) }))} className="text-black" />
         <Input placeholder="Location" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} className="text-black" />
-        <MobileSelect value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))} placeholder="Status" options={[{ value: 'pending', label: 'Pending' }, { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' }]} />
+        <MobileSelect value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))} placeholder="Status" options={STATUS_SELECT_OPTIONS} />
       </div>
       <div className="flex gap-2 justify-end">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
@@ -31,6 +39,7 @@ function StudentForm({ student, onSave, onCancel }) {
 }
 
 export default function StudentManager() {
+  const { user } = useAuth();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -50,9 +59,23 @@ export default function StudentManager() {
   const handleSave = async (form) => {
     if (editing) {
       await base44.entities.StudentProfile.update(editing.id, form);
+      await logAdminAction(user, {
+        action: 'edit_profile',
+        target_type: 'student_profile',
+        target_id: editing.id,
+        target_label: form.full_name || editing.full_name,
+        metadata: { source: 'StudentManager', status: form.status },
+      });
       setEditing(null);
     } else {
-      await base44.entities.StudentProfile.create(form);
+      const created = await base44.entities.StudentProfile.create(form);
+      await logAdminAction(user, {
+        action: 'create_profile',
+        target_type: 'student_profile',
+        target_id: created?.id ?? null,
+        target_label: form.full_name,
+        metadata: { source: 'StudentManager' },
+      });
       setAdding(false);
     }
     load();
@@ -60,7 +83,14 @@ export default function StudentManager() {
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this candidate profile?')) return;
+    const target = students.find((s) => s.id === id);
     await base44.entities.StudentProfile.delete(id);
+    await logAdminAction(user, {
+      action: 'delete_profile',
+      target_type: 'student_profile',
+      target_id: id,
+      target_label: target?.full_name ?? '',
+    });
     load();
   };
 
@@ -72,10 +102,14 @@ export default function StudentManager() {
     }
     if (!confirm(`Mark ${incompleteStudents.length} incomplete profile(s) as pending?`)) return;
     await Promise.all(incompleteStudents.map(s => base44.entities.StudentProfile.update(s.id, { status: 'pending' })));
+    await logAdminAction(user, {
+      action: 'bulk_mark_pending',
+      target_type: 'student_profile',
+      target_label: `${incompleteStudents.length} profiles`,
+      metadata: { ids: incompleteStudents.map((s) => s.id) },
+    });
     load();
   };
-
-  const statusColors = { pending: 'bg-amber-100 text-amber-700', approved: 'bg-green-100 text-green-700', rejected: 'bg-red-100 text-red-700' };
 
   const isProfileIncomplete = (student) => {
     const requiredFields = ['resume_url', 'intro_video_url', 'email', 'phone_number'];
@@ -121,7 +155,9 @@ export default function StudentManager() {
                 <div className="min-w-0">
                    <div className="flex items-center gap-2 flex-wrap">
                      <p className="font-bold text-slate-800">{s.full_name || 'Unnamed'}</p>
-                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColors[s.status]}`}>{s.status}</span>
+                     <StatusPill status={s.status} />
+                     {s.flagged && <FlaggedPill />}
+                     {s.verified_student && <VerifiedStudentPill />}
                      {isProfileIncomplete(s) && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Incomplete</span>}
                    </div>
                   <p className="text-sm text-slate-500 truncate">{[s.university, s.major, s.graduation_year ? `Class of ${s.graduation_year}` : null].filter(Boolean).join(' · ')}</p>

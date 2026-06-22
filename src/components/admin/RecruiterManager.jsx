@@ -5,6 +5,14 @@ import { Input } from "@/components/ui/input";
 import MobileSelect from '../layout/MobileSelect';
 import { Pencil, Trash2, Check } from 'lucide-react';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import StatusPill, { STATUS_OPTIONS, FlaggedPill } from './StatusPill';
+import { logAdminAction } from '@/lib/adminLog';
+import { useAuth } from '@/lib/AuthContext';
+
+const STATUS_SELECT_OPTIONS = STATUS_OPTIONS.map((value) => ({
+  value,
+  label: value.charAt(0).toUpperCase() + value.slice(1),
+}));
 
 const EMPTY = { full_name: '', company: '', title: '', industry: '', company_website: '', status: 'pending' };
 
@@ -18,7 +26,7 @@ function RecruiterForm({ recruiter, onSave, onCancel }) {
         <Input placeholder="Job title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className="text-black" />
         <Input placeholder="Industry" value={form.industry} onChange={(e) => setForm((f) => ({ ...f, industry: e.target.value }))} className="text-black" />
         <Input placeholder="Company website" value={form.company_website} onChange={(e) => setForm((f) => ({ ...f, company_website: e.target.value }))} className="text-black" />
-        <MobileSelect value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))} placeholder="Status" options={[{ value: 'pending', label: 'Pending' }, { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' }]} />
+        <MobileSelect value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))} placeholder="Status" options={STATUS_SELECT_OPTIONS} />
       </div>
       <div className="flex gap-2 justify-end">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
@@ -31,6 +39,7 @@ function RecruiterForm({ recruiter, onSave, onCancel }) {
 }
 
 export default function RecruiterManager() {
+  const { user } = useAuth();
   const [recruiters, setRecruiters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -49,9 +58,23 @@ export default function RecruiterManager() {
   const handleSave = async (form) => {
     if (editing) {
       await base44.entities.RecruiterProfile.update(editing.id, form);
+      await logAdminAction(user, {
+        action: 'edit_profile',
+        target_type: 'recruiter_profile',
+        target_id: editing.id,
+        target_label: form.full_name || editing.full_name,
+        metadata: { source: 'RecruiterManager', status: form.status },
+      });
       setEditing(null);
     } else {
-      await base44.entities.RecruiterProfile.create(form);
+      const created = await base44.entities.RecruiterProfile.create(form);
+      await logAdminAction(user, {
+        action: 'create_profile',
+        target_type: 'recruiter_profile',
+        target_id: created?.id ?? null,
+        target_label: form.full_name,
+        metadata: { source: 'RecruiterManager' },
+      });
       setAdding(false);
     }
     load();
@@ -59,11 +82,16 @@ export default function RecruiterManager() {
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this recruiter profile?')) return;
+    const target = recruiters.find((r) => r.id === id);
     await base44.entities.RecruiterProfile.delete(id);
+    await logAdminAction(user, {
+      action: 'delete_profile',
+      target_type: 'recruiter_profile',
+      target_id: id,
+      target_label: target?.full_name ?? '',
+    });
     load();
   };
-
-  const statusColors = { pending: 'bg-amber-100 text-amber-700', approved: 'bg-green-100 text-green-700', rejected: 'bg-red-100 text-red-700' };
 
   const filtered = recruiters.filter((r) =>
   !search || r.full_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -101,7 +129,8 @@ export default function RecruiterManager() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-bold text-slate-800">{r.full_name || 'Unnamed'}</p>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColors[r.status]}`}>{r.status}</span>
+                    <StatusPill status={r.status} />
+                    {r.flagged && <FlaggedPill />}
                   </div>
                   <p className="text-sm text-slate-500 truncate">{[r.company, r.title, r.industry].filter(Boolean).join(' · ')}</p>
                 </div>

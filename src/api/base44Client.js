@@ -44,6 +44,8 @@ const ENTITY_TABLES = {
   EventInvite: 'event_invites',
   Project: 'projects',
   ProjectInterest: 'project_interests',
+  AppSettings: 'app_settings',
+  AdminAction: 'admin_actions',
   // "User" in the old admin UI was really the auth user list. We route it to
   // the profiles table (one row per auth user), which is where role / metadata
   // live in the Supabase schema.
@@ -72,11 +74,14 @@ const TABLE_COLUMNS = {
     'work_preferences', 'education', 'experience', 'extracted_keywords',
     'education_level', 'keywords',
     'level', 'status', 'industry',
+    'flagged', 'internal_notes', 'suspension_reason', 'verified_student',
+    'notification_message',
   ],
   recruiter_profiles: [
     ...COMMON, 'full_name', 'email', 'company', 'role', 'title', 'photo_url',
     'company_logo_url', 'company_website', 'intro_video_url', 'bio', 'status',
     'industry', 'location', 'phone_number', 'is_contact_point', 'keywords',
+    'flagged', 'internal_notes', 'suspension_reason', 'notification_message',
   ],
   jobs: [
     ...COMMON, 'title', 'company', 'description', 'requirements', 'location',
@@ -140,6 +145,15 @@ const TABLE_COLUMNS = {
   ],
   project_interests: [
     ...COMMON, 'project_id', 'user_email', 'note',
+  ],
+  app_settings: [
+    'id', 'created_date', 'updated_date', 'singleton',
+    'moderation_students', 'moderation_recruiters',
+    'trusted_student_email_domains', 'log_admin_page_views', 'data',
+  ],
+  admin_actions: [
+    'id', 'created_date', 'admin_id', 'admin_email', 'action',
+    'target_type', 'target_id', 'target_label', 'reason', 'notes', 'metadata',
   ],
   profiles: [
     'id', 'email', 'full_name', 'role', 'photo_url', 'resume_url',

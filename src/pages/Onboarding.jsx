@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { GraduationCap, Briefcase, ArrowRight, ArrowLeft, UserSearch, School, BookOpen, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { loadAppSettings, isTrustedStudentEmail, DEFAULT_APP_SETTINGS } from '@/lib/appSettings';
 
 // "Build your profile" / pitch-video onboarding is disabled for now: as soon
 // as the user picks a role (and, for students, their education level) we stub
@@ -16,11 +17,18 @@ export default function Onboarding() {
   const [authUser, setAuthUser] = useState(null);
   // 'role' -> pick role; 'edu' -> student-only education level question.
   const [step, setStep] = useState('role');
+  // App-level moderation settings. Loaded once at mount; cached afterwards.
+  const [appSettings, setAppSettings] = useState(DEFAULT_APP_SETTINGS);
 
   useEffect(() => {
     base44.auth.me()
       .then(setAuthUser)
       .catch(() => base44.auth.redirectToLogin());
+    // Load global moderation flags so we honor admin-gated signup. Failures
+    // fall back to defaults (moderation OFF) so signup never breaks.
+    loadAppSettings()
+      .then((s) => { if (s) setAppSettings(s); })
+      .catch(() => { /* ignored, defaults apply */ });
   }, []);
 
   const createStudentProfile = async (educationLevel) => {
@@ -30,11 +38,19 @@ export default function Onboarding() {
     try {
       const fullName = (authUser.full_name || '').trim();
       const email = (authUser.email || '').trim();
+      // If the admin has turned on student moderation, the profile lands as
+      // 'pending' and the user sees a "waiting for review" banner on the
+      // dashboard. Otherwise we keep the one-click free flow we just shipped.
+      const status = appSettings.moderation_students ? 'pending' : 'approved';
+      // Auto-verify when the email domain is on the trusted-domains list (e.g.
+      // .edu, school IT domains). Admins can manually override later.
+      const verified = isTrustedStudentEmail(email, appSettings);
       await base44.entities.StudentProfile.create({
         full_name: fullName,
         email,
-        status: 'approved',
+        status,
         education_level: educationLevel,
+        verified_student: verified,
       });
       navigate(createPageUrl('StudentDashboard'));
     } catch (e) {
@@ -50,10 +66,11 @@ export default function Onboarding() {
     try {
       const fullName = (authUser.full_name || '').trim();
       const email = (authUser.email || '').trim();
+      const status = appSettings.moderation_recruiters ? 'pending' : 'approved';
       await base44.entities.RecruiterProfile.create({
         full_name: fullName,
         email,
-        status: 'approved',
+        status,
         is_contact_point: role === 'contact_point',
       });
       navigate(createPageUrl('RecruiterDashboard'));

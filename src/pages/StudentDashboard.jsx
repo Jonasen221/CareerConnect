@@ -143,7 +143,25 @@ Return exactly 3 job picks.`,
           {!skipApprovalGates && profile?.status === 'rejected' && (
             <div className="mb-4 p-3 bg-red-500/30 border border-red-200/50 rounded-2xl flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />
-              <p className="text-white text-sm">Your application was not approved. Contact support for more information.</p>
+              <p className="text-white text-sm">Your application was not approved. {profile?.suspension_reason ? `Reason: ${profile.suspension_reason}` : 'Contact support for more information.'}</p>
+            </div>
+          )}
+          {!skipApprovalGates && profile?.status === 'suspended' && (
+            <div className="mb-4 p-3 bg-orange-500/30 border border-orange-200/50 rounded-2xl flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />
+              <p className="text-white text-sm">Your account has been suspended. {profile?.suspension_reason ? `Reason: ${profile.suspension_reason}` : 'Contact support for more information.'}</p>
+            </div>
+          )}
+          {!skipApprovalGates && profile?.status === 'banned' && (
+            <div className="mb-4 p-3 bg-zinc-900/40 border border-zinc-200/30 rounded-2xl flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />
+              <p className="text-white text-sm">Your account has been banned. {profile?.suspension_reason ? `Reason: ${profile.suspension_reason}` : 'Contact support for more information.'}</p>
+            </div>
+          )}
+          {!skipApprovalGates && profile?.notification_message && profile.status !== 'suspended' && profile.status !== 'banned' && (
+            <div className="mb-4 p-3 bg-sky-500/30 border border-sky-200/50 rounded-2xl flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />
+              <p className="text-white text-sm">{profile.notification_message}</p>
             </div>
           )}
           {!profile && (

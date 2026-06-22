@@ -74,7 +74,9 @@ export default function RecruiterProfilePage() {
   const statusConfig = {
     pending: { icon: Clock, banner: 'bg-amber-50 border-amber-200', iconCls: 'text-amber-600', textCls: 'text-amber-800', subCls: 'text-amber-600', label: 'Pending Review', desc: 'Your profile is being reviewed by our team' },
     approved: { icon: CheckCircle, banner: 'bg-green-50 border-green-200', iconCls: 'text-green-600', textCls: 'text-green-800', subCls: 'text-green-600', label: 'Profile Approved', desc: 'Your profile is live and visible to students' },
-    rejected: { icon: AlertCircle, banner: 'bg-red-50 border-red-200', iconCls: 'text-red-600', textCls: 'text-red-800', subCls: 'text-red-600', label: 'Not Approved', desc: 'Contact support for more information' },
+    rejected: { icon: AlertCircle, banner: 'bg-red-50 border-red-200', iconCls: 'text-red-600', textCls: 'text-red-800', subCls: 'text-red-600', label: 'Not Approved', desc: profile.suspension_reason || 'Contact support for more information' },
+    suspended: { icon: AlertCircle, banner: 'bg-orange-50 border-orange-200', iconCls: 'text-orange-600', textCls: 'text-orange-800', subCls: 'text-orange-600', label: 'Account Suspended', desc: profile.suspension_reason || 'Contact support for more information' },
+    banned: { icon: AlertCircle, banner: 'bg-zinc-100 border-zinc-300', iconCls: 'text-zinc-800', textCls: 'text-zinc-900', subCls: 'text-zinc-700', label: 'Account Banned', desc: profile.suspension_reason || 'Contact support for more information' },
   };
   const sc = statusConfig[profile.status] || statusConfig.pending;
   const StatusIcon = sc.icon;

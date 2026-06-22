@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, LogOut, Shield, Menu, X, Star, Phone, ArrowLeft, FolderKanban } from 'lucide-react';
+import { LayoutDashboard, Zap, Users, Briefcase, Calendar, MessageCircle, User, LogOut, Shield, Menu, X, Star, Phone, ArrowLeft, FolderKanban, ShieldCheck } from 'lucide-react';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import BottomTabNav from './components/layout/BottomTabNav';
 import RecruiterBottomTabNav from './components/layout/RecruiterBottomTabNav';
@@ -92,6 +92,7 @@ export default function Layout({ children, currentPageName }) {
   ];
   const adminNav = [
     { label: 'Admin', icon: Shield, page: 'AdminDashboard' },
+    { label: 'Candidate Control', icon: ShieldCheck, page: 'AdminCandidates' },
     { label: 'Integrations', icon: Zap, page: 'IntegrationsHub' },
   ];
 
@@ -105,7 +106,7 @@ export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
 
   // Pages that are "root" tabs — no back button shown
-  const rootPages = ['StudentDashboard', 'RecruiterDashboard', 'AdminDashboard', 'JobSwipe', 'EventsPage', 'Messages', 'CareerGames', 'StudentSearch', 'JobManagement', 'StudentSwipe', 'RecruiterProfilePage', 'StudentProfilePage', 'CallRequests', 'InterviewScheduling', 'Projects'];
+  const rootPages = ['StudentDashboard', 'RecruiterDashboard', 'AdminDashboard', 'AdminCandidates', 'JobSwipe', 'EventsPage', 'Messages', 'CareerGames', 'StudentSearch', 'JobManagement', 'StudentSwipe', 'RecruiterProfilePage', 'StudentProfilePage', 'CallRequests', 'InterviewScheduling', 'Projects'];
   const isSubPage = !rootPages.includes(currentPageName);
 
   const noLayout = ['Home', 'Onboarding'];

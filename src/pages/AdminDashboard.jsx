@@ -15,14 +15,15 @@ import RecruiterManager from '../components/admin/RecruiterManager';
 import EventManager from '../components/admin/EventManager';
 import DashboardCalendar from '../components/calendar/DashboardCalendar';
 import ProfilePreviewModal from '../components/admin/ProfilePreviewModal';
+import StatusPill from '../components/admin/StatusPill';
+import { logAdminAction } from '@/lib/adminLog';
 
-const StatusBadge = ({ status }) => {
-  const styles = { pending: 'bg-amber-100 text-amber-700', approved: 'bg-green-100 text-green-700', rejected: 'bg-red-100 text-red-700' };
-  return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${styles[status]}`}>{status}</span>;
-};
+// Re-export under the old name so the legacy callsites keep rendering.
+const StatusBadge = ({ status }) => <StatusPill status={status} />;
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const [adminUser, setAdminUser] = useState(null);
   const [students, setStudents] = useState([]);
   const [recruiters, setRecruiters] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -46,6 +47,7 @@ export default function AdminDashboard() {
         navigate('/');
         return;
       }
+      setAdminUser(user);
       setIsAdmin(true);
       await loadData();
     } catch {
@@ -67,11 +69,30 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
-  const updateStudent = async (id, status) => {await base44.entities.StudentProfile.update(id, { status });loadData();};
+  const updateStudent = async (id, status) => {
+    await base44.entities.StudentProfile.update(id, { status });
+    const target = students.find((s) => s.id === id);
+    await logAdminAction(adminUser, {
+      action: status === 'approved' ? 'approve_profile' : status === 'rejected' ? 'reject_profile' : `set_status_${status}`,
+      target_type: 'student_profile',
+      target_id: id,
+      target_label: target?.full_name ?? '',
+      metadata: { source: 'AdminDashboard', new_status: status },
+    });
+    loadData();
+  };
   const handleEditAccount = (acc) => { setEditingAccount(acc); setEditRole(acc.role || 'user'); };
   const handleSaveRole = async () => {
     setSavingRole(true);
+    const previousRole = editingAccount.role || 'user';
     await base44.entities.User.update(editingAccount.id, { role: editRole });
+    await logAdminAction(adminUser, {
+      action: 'change_user_role',
+      target_type: 'user',
+      target_id: editingAccount.id,
+      target_label: editingAccount.email,
+      metadata: { previous_role: previousRole, new_role: editRole },
+    });
     setSavingRole(false);
     setEditingAccount(null);
     loadData();
@@ -81,6 +102,12 @@ export default function AdminDashboard() {
     if (!deletingAccount) return;
     try {
       await base44.entities.User.delete(deletingAccount.id);
+      await logAdminAction(adminUser, {
+        action: 'delete_user',
+        target_type: 'user',
+        target_id: deletingAccount.id,
+        target_label: deletingAccount.email,
+      });
       setConfirmDelete(false);
       setDeletingAccount(null);
       loadData();
@@ -89,7 +116,18 @@ export default function AdminDashboard() {
       alert('Failed to delete account');
     }
   };
-  const updateRecruiter = async (id, status) => {await base44.entities.RecruiterProfile.update(id, { status });loadData();};
+  const updateRecruiter = async (id, status) => {
+    await base44.entities.RecruiterProfile.update(id, { status });
+    const target = recruiters.find((r) => r.id === id);
+    await logAdminAction(adminUser, {
+      action: status === 'approved' ? 'approve_profile' : status === 'rejected' ? 'reject_profile' : `set_status_${status}`,
+      target_type: 'recruiter_profile',
+      target_id: id,
+      target_label: target?.full_name ?? '',
+      metadata: { source: 'AdminDashboard', new_status: status },
+    });
+    loadData();
+  };
 
   const pending = (list) => list.filter((i) => i.status === 'pending');
   const approved = (list) => list.filter((i) => i.status === 'approved');
