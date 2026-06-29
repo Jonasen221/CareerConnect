@@ -12,6 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Filter,
@@ -27,6 +30,7 @@ import {
   MousePointerClick,
   UserPlus,
   Handshake,
+  Sparkles,
 } from 'lucide-react';
 import StatusPill, {
   STATUS_OPTIONS,
@@ -379,6 +383,166 @@ function AdminMetric({ icon: Icon, label, value, sub }) {
       </div>
       <p className="text-2xl font-bold text-[#2E3F4F] mt-1">{value}</p>
       {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+/**
+ * Lists incoming 1:1 coaching requests. Lets admins toggle status (new →
+ * contacted → scheduled → completed → closed) and jot internal notes. This is
+ * the admin side of the inquiry-only flow chosen in the Jun 29 product call.
+ */
+const COACHING_STATUSES = [
+  { value: 'new', label: 'New', tone: 'bg-amber-100 text-amber-800' },
+  { value: 'contacted', label: 'Contacted', tone: 'bg-sky-100 text-sky-800' },
+  { value: 'scheduled', label: 'Scheduled', tone: 'bg-violet-100 text-violet-800' },
+  { value: 'completed', label: 'Completed', tone: 'bg-emerald-100 text-emerald-800' },
+  { value: 'closed', label: 'Closed', tone: 'bg-slate-200 text-slate-700' },
+];
+
+const coachingToneOf = (s) => COACHING_STATUSES.find((x) => x.value === s)?.tone ?? 'bg-slate-100 text-slate-700';
+
+function CoachingRequestsPanel() {
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState([]);
+  const [filter, setFilter] = useState('open'); // 'open' | 'all'
+  const [notesDraft, setNotesDraft] = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const all = await base44.entities.CoachingRequest.list();
+      const sorted = (all || []).slice().sort(
+        (a, b) => new Date(b.created_date) - new Date(a.created_date),
+      );
+      setRows(sorted);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const visible = useMemo(() => {
+    if (filter === 'all') return rows;
+    return rows.filter((r) => r.status !== 'closed' && r.status !== 'completed');
+  }, [rows, filter]);
+
+  const updateStatus = async (req, status) => {
+    const patch = { status };
+    if (status === 'contacted' && !req.contacted_at) patch.contacted_at = new Date().toISOString();
+    if ((status === 'completed' || status === 'closed') && !req.resolved_at) {
+      patch.resolved_at = new Date().toISOString();
+    }
+    const updated = await base44.entities.CoachingRequest.update(req.id, patch);
+    setRows((prev) => prev.map((r) => (r.id === req.id ? { ...r, ...updated } : r)));
+  };
+
+  const saveNotes = async (req) => {
+    const text = notesDraft[req.id] ?? req.admin_notes ?? '';
+    const updated = await base44.entities.CoachingRequest.update(req.id, { admin_notes: text });
+    setRows((prev) => prev.map((r) => (r.id === req.id ? { ...r, ...updated } : r)));
+    setNotesDraft((d) => { const c = { ...d }; delete c[req.id]; return c; });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-slate-500">
+          {visible.length} {filter === 'all' ? 'total' : 'open'} request{visible.length === 1 ? '' : 's'}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={filter === 'open' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('open')}
+            className={filter === 'open' ? 'bg-[#5BA4C4] hover:bg-[#3D87AA] text-white' : ''}
+          >
+            Open
+          </Button>
+          <Button
+            variant={filter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('all')}
+            className={filter === 'all' ? 'bg-[#5BA4C4] hover:bg-[#3D87AA] text-white' : ''}
+          >
+            All
+          </Button>
+          <Button variant="outline" size="sm" onClick={load}>
+            <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
+          </Button>
+        </div>
+      </div>
+
+      {loading && <p className="text-slate-400 text-center py-12">Loading...</p>}
+      {!loading && visible.length === 0 && (
+        <p className="text-slate-400 text-center py-12">No coaching requests {filter === 'all' ? 'yet' : 'open'}.</p>
+      )}
+      {!loading && visible.map((req) => (
+        <div key={req.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-semibold text-[#2E3F4F]">
+                {req.requester_name || req.requester_email}
+              </p>
+              <p className="text-xs text-slate-500 truncate">{req.requester_email}</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {req.created_date ? new Date(req.created_date).toLocaleString() : '—'} ·
+                {' '}<span className="uppercase">{req.requester_role || 'user'}</span>
+                {' · '}<span>{req.package || 'open'}</span>
+              </p>
+            </div>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${coachingToneOf(req.status)}`}>
+              {req.status}
+            </span>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-slate-800">{req.topic}</p>
+            {req.details && <p className="text-sm text-slate-600 mt-1 whitespace-pre-line">{req.details}</p>}
+            {req.preferred_times && (
+              <p className="text-xs text-slate-500 mt-1">
+                <span className="font-semibold text-slate-600">Times:</span> {req.preferred_times}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-end gap-2 pt-2 border-t border-slate-50">
+            <div className="flex-1">
+              <Label className="text-[10px] uppercase text-slate-400">Internal notes</Label>
+              <Textarea
+                rows={2}
+                value={notesDraft[req.id] ?? req.admin_notes ?? ''}
+                onChange={(e) => setNotesDraft((d) => ({ ...d, [req.id]: e.target.value }))}
+                placeholder="Private notes about follow-up, pricing, etc."
+                className="resize-none text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Select value={req.status} onValueChange={(v) => updateStatus(req, v)}>
+                <SelectTrigger className="h-8 text-xs min-w-[120px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COACHING_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                onClick={() => saveNotes(req)}
+                disabled={notesDraft[req.id] === undefined}
+                className="bg-[#5BA4C4] hover:bg-[#3D87AA] text-white"
+              >
+                Save
+              </Button>
+              <a
+                href={`mailto:${req.requester_email}?subject=Re: ${encodeURIComponent(req.topic || 'Coaching request')}`}
+                className="text-xs text-[#3D87AA] hover:underline"
+              >
+                Email
+              </a>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -740,6 +904,9 @@ export default function AdminCandidates() {
             <TabsTrigger value="referrals" className="data-[state=active]:bg-[#5BA4C4] data-[state=active]:text-white">
               <Share2 className="w-4 h-4 mr-1.5" /> Referrals
             </TabsTrigger>
+            <TabsTrigger value="coaching" className="data-[state=active]:bg-[#5BA4C4] data-[state=active]:text-white">
+              <Sparkles className="w-4 h-4 mr-1.5" /> Coaching
+            </TabsTrigger>
             <TabsTrigger value="settings" className="data-[state=active]:bg-[#5BA4C4] data-[state=active]:text-white">
               <SettingsIcon className="w-4 h-4 mr-1.5" /> Settings
             </TabsTrigger>
@@ -789,6 +956,10 @@ export default function AdminCandidates() {
 
           <TabsContent value="referrals" className="mt-4">
             <ReferralsPanel />
+          </TabsContent>
+
+          <TabsContent value="coaching" className="mt-4">
+            <CoachingRequestsPanel />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-4">

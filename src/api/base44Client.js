@@ -52,6 +52,7 @@ const ENTITY_TABLES = {
   ReferralClick: 'referral_clicks',
   ReferralSignup: 'referral_signups',
   OfferEvent: 'offer_events',
+  CoachingRequest: 'coaching_requests',
   // "User" in the old admin UI was really the auth user list. We route it to
   // the profiles table (one row per auth user), which is where role / metadata
   // live in the Supabase schema.
@@ -78,7 +79,7 @@ const TABLE_COLUMNS = {
     'graduation_year', 'graduation_month', 'location', 'nationality',
     'linkedin_url', 'phone_number', 'skills', 'languages', 'industries',
     'work_preferences', 'education', 'experience', 'extracted_keywords',
-    'education_level', 'keywords',
+    'education_level', 'degree_level', 'keywords',
     'level', 'status', 'industry',
     'flagged', 'internal_notes', 'suspension_reason', 'verified_student',
     'notification_message',
@@ -188,6 +189,11 @@ const TABLE_COLUMNS = {
     'candidate_name', 'target_type', 'target_id', 'target_label', 'offer_summary',
     'status', 'platform_attributed', 'attributed_link_id', 'attributed_link_code',
     'decision_date', 'notes',
+  ],
+  coaching_requests: [
+    ...COMMON, 'requester_email', 'requester_name', 'requester_role', 'topic',
+    'details', 'preferred_times', 'package', 'status', 'admin_notes',
+    'contacted_at', 'resolved_at',
   ],
   profiles: [
     'id', 'email', 'full_name', 'role', 'photo_url', 'resume_url',

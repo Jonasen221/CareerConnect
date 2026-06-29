@@ -132,7 +132,7 @@ Return exactly 3 job picks.`,
     <PullToRefresh onRefresh={loadData}>
     <div className="min-h-screen bg-[#E8E4DF] dark:bg-slate-900">
       {/* Playful header banner */}
-      <div className="bg-gradient-to-r from-[#5BA4C4] via-[#4a90b0] to-[#3D87AA] px-6 pt-8 pb-6">
+      <div className="bg-gradient-to-r from-[#5BA4C4] via-[#4a90b0] to-[#3D87AA] px-6 pt-6 pb-4">
         <div className="max-w-5xl mx-auto">
           {!skipApprovalGates && profile?.status === 'pending' && (
             <div className="mb-4 p-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl flex items-center gap-3">
@@ -211,44 +211,11 @@ Return exactly 3 job picks.`,
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 -mt-10">
-      {/* Progress Tracker */}
-      <div className="mb-8 bg-white dark:bg-slate-800 rounded-3xl border border-[#E8E4DF] dark:border-slate-700 shadow-sm p-6">
-        <h2 className="font-black text-[#2E3F4F] dark:text-slate-100 mb-4">📈 Weekly Progress</h2>
-        <div className="space-y-4">
-          {/* Swipes Progress */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold text-[#2E3F4F] dark:text-slate-100">Swipes</p>
-              <p className="text-sm font-black text-[#5BA4C4]">{Math.min(stats.swipes, 10)}/10</p>
-            </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-[#5BA4C4] to-[#4a90b0] h-full rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min((stats.swipes / 10) * 100, 100)}%` }}
-              />
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Keep swiping to explore more opportunities! 🎯</p>
-          </div>
-          
-          {/* Booked Meetings Progress */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold text-[#2E3F4F] dark:text-slate-100">Booked Meetings</p>
-              <p className="text-sm font-black text-[#3D87AA]">{stats.matches}/3</p>
-            </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-[#3D87AA] to-[#2d6d8e] h-full rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min((stats.matches / 3) * 100, 100)}%` }}
-              />
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Great work! Each match gets you closer to your dream role. 🚀</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="max-w-5xl mx-auto px-6 pt-4">
+      {/* Stats — first thing under the hero so the user lands on numbers,
+          not whitespace. Keeps the dashboard feeling alive even before any
+          activity has accumulated. */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
           { label: 'Jobs Applied', count: stats.swipes, emoji: '📨', bg: 'from-[#5BA4C4] to-[#4a90b0]', page: 'JobSwipe' },
           { label: 'Matches', count: stats.matches, emoji: '🤝', bg: 'from-[#3D87AA] to-[#2d6d8e]', page: 'Messages' },
@@ -256,17 +223,47 @@ Return exactly 3 job picks.`,
           { label: 'New Messages', count: stats.messages, emoji: '💬', bg: 'from-[#2d6d8e] to-[#1e5070]', page: 'Messages' },
         ].map(stat => (
           <Link key={stat.label} to={createPageUrl(stat.page)}>
-            <Card className="border-0 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer overflow-hidden">
-              <CardContent className="p-5 bg-gradient-to-br text-white" style={{background: `linear-gradient(135deg, var(--tw-gradient-stops))`}}>
-                <div className={`bg-gradient-to-br ${stat.bg} rounded-2xl p-5 text-white`}>
-                  <div className="text-3xl mb-2">{stat.emoji}</div>
-                  <p className="text-3xl font-black">{stat.count}</p>
-                  <p className="text-xs text-white/80 mt-0.5 font-medium">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className={`bg-gradient-to-br ${stat.bg} rounded-2xl p-4 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer`}>
+              <div className="text-2xl mb-1">{stat.emoji}</div>
+              <p className="text-2xl font-black leading-tight">{stat.count}</p>
+              <p className="text-[11px] text-white/80 mt-0.5 font-medium">{stat.label}</p>
+            </div>
           </Link>
         ))}
+      </div>
+
+      {/* Progress Tracker */}
+      <div className="mb-6 bg-white dark:bg-slate-800 rounded-3xl border border-[#E8E4DF] dark:border-slate-700 shadow-sm p-5">
+        <h2 className="font-black text-[#2E3F4F] dark:text-slate-100 mb-3">📈 Weekly Progress</h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          {/* Swipes Progress */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-[#2E3F4F] dark:text-slate-100">Swipes</p>
+              <p className="text-sm font-black text-[#5BA4C4]">{Math.min(stats.swipes, 10)}/10</p>
+            </div>
+            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-[#5BA4C4] to-[#4a90b0] h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min((stats.swipes / 10) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Booked Meetings Progress */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-[#2E3F4F] dark:text-slate-100">Booked Meetings</p>
+              <p className="text-sm font-black text-[#3D87AA]">{stats.matches}/3</p>
+            </div>
+            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-[#3D87AA] to-[#2d6d8e] h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min((stats.matches / 3) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* AI Best Jobs of the Week */}

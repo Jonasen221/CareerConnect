@@ -1,114 +1,109 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Upload, FileText, Video, Sparkles, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { createPageUrl } from '@/utils';
+import CoachingRequestModal from '@/components/coaching/CoachingRequestModal';
+
+/**
+ * Validates an LLM analysis payload. The edge function returns {} when the
+ * OPENAI_API_KEY secret isn't configured yet; without this guard the UI used
+ * to render an empty "/10" with empty strengths/improvements lists, which is
+ * what the user reported on Jun 29.
+ */
+const isValidAnalysis = (a) =>
+  a && typeof a === 'object' && (typeof a.score === 'number' || (a.strengths?.length ?? 0) > 0);
 
 export default function AICVReview({ user, profile }) {
-  const navigate = useNavigate();
-  const [cvFile, setCvFile] = useState(null);
-  const [videoFile, setVideoFile] = useState(null);
   const [cvAnalysis, setCvAnalysis] = useState(null);
   const [videoAnalysis, setVideoAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showCoaching, setShowCoaching] = useState(false);
 
   const handleFileUpload = async (file, type) => {
     setLoading(true);
+    setError('');
     try {
-      // Upload file using SDK
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
       if (type === 'cv') {
-        // Extract text from CV
         const extracted = await base44.integrations.Core.ExtractDataFromUploadedFile({
           file_url,
           json_schema: {
             type: 'object',
             properties: {
-              content: { type: 'string', description: 'Full text content of the CV' }
-            }
-          }
+              content: { type: 'string', description: 'Full text content of the CV' },
+            },
+          },
         });
-        
-        // AI Analysis
+
+        if (extracted?.status === 'error' || extracted?.error) {
+          throw new Error(extracted?.error || 'Could not read your CV.');
+        }
+
         const analysis = await base44.integrations.Core.InvokeLLM({
-          prompt: `Analyze this CV and provide:
-1. Overall score (1-10)
-2. Top 3 strengths
-3. Top 3 areas for improvement
-4. Specific recommendations for improvement
+          system: 'You are a senior career coach giving direct, actionable CV feedback. Return JSON only.',
+          prompt: `Analyse this CV and respond with concrete, specific feedback. Avoid generic platitudes.
 
 CV Content:
-${extracted.output?.content || 'No content extracted'}
-
-Provide response in JSON format:
-{
-  "score": number,
-  "strengths": ["strength1", "strength2", "strength3"],
-  "improvements": ["improvement1", "improvement2", "improvement3"],
-  "recommendations": "detailed recommendations paragraph"
-}`,
+${extracted.output?.content || 'No content extracted'}`,
           response_json_schema: {
             type: 'object',
+            required: ['score', 'strengths', 'improvements', 'recommendations'],
             properties: {
-              score: { type: 'number' },
-              strengths: { type: 'array', items: { type: 'string' } },
-              improvements: { type: 'array', items: { type: 'string' } },
-              recommendations: { type: 'string' }
-            }
-          }
+              score: { type: 'number', minimum: 1, maximum: 10 },
+              strengths: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 3 },
+              improvements: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 3 },
+              recommendations: { type: 'string' },
+            },
+          },
         });
+
+        if (!isValidAnalysis(analysis)) {
+          throw new Error(analysis?.error || 'AI is not configured yet. Ask an admin to set OPENAI_API_KEY.');
+        }
         setCvAnalysis(analysis);
-        setCvFile(null);
-        // Update profile with resume URL
-        await base44.auth.updateMe({ resume_url: file_url });
+        if (profile?.id && profile.id !== 'preview') {
+          await base44.entities.StudentProfile.update(profile.id, { resume_url: file_url });
+        }
       } else if (type === 'video') {
-        // Analyze video with AI
         const analysis = await base44.integrations.Core.InvokeLLM({
-          prompt: `Provide feedback on a 90-second intro video for a job candidate. Consider:
-1. Presentation quality score (1-10)
-2. Top 3 strengths in communication
-3. Top 3 areas for improvement
-4. Specific recommendations
+          system: 'You are a presentation coach. Return JSON only.',
+          prompt: `Provide feedback on a 90-second intro video for a job candidate. Be specific.
+
+Note: you only have metadata, not the actual video — so frame feedback as a "what to check" structure unless you can transcribe the audio.
 
 Candidate Profile:
 - Name: ${profile?.full_name || 'Student'}
 - Major: ${profile?.major || 'Not specified'}
-- University: ${profile?.university || 'Not specified'}
-
-Provide response in JSON format:
-{
-  "score": number,
-  "strengths": ["strength1", "strength2", "strength3"],
-  "improvements": ["improvement1", "improvement2", "improvement3"],
-  "recommendations": "detailed recommendations paragraph"
-}`,
+- University: ${profile?.university || 'Not specified'}`,
           response_json_schema: {
             type: 'object',
+            required: ['score', 'strengths', 'improvements', 'recommendations'],
             properties: {
               score: { type: 'number' },
               strengths: { type: 'array', items: { type: 'string' } },
               improvements: { type: 'array', items: { type: 'string' } },
-              recommendations: { type: 'string' }
-            }
-          }
+              recommendations: { type: 'string' },
+            },
+          },
         });
+
+        if (!isValidAnalysis(analysis)) {
+          throw new Error(analysis?.error || 'AI is not configured yet. Ask an admin to set OPENAI_API_KEY.');
+        }
         setVideoAnalysis(analysis);
-        setVideoFile(null);
-        // Update profile with video URL
-        await base44.auth.updateMe({ intro_video_url: file_url });
+        if (profile?.id && profile.id !== 'preview') {
+          await base44.entities.StudentProfile.update(profile.id, { intro_video_url: file_url });
+        }
       }
-    } catch (error) {
-      console.error('Analysis error:', error);
-      alert('Analysis failed. Please try again or upgrade your plan for premium AI features.');
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Analysis error:', e);
+      setError(e?.message || 'Analysis failed. Please try again.');
     }
     setLoading(false);
-  }
-
-  const handleBuyPackage = () => {
-    navigate(createPageUrl('ServicesBooking'));
   };
 
   return (
@@ -120,8 +115,8 @@ Provide response in JSON format:
               <Sparkles className="w-5 h-5 text-[#5BA4C4]" />
               AI CV & Video Review
             </h2>
-            <Button size="sm" onClick={handleBuyPackage} className="bg-gradient-to-r from-[#5BA4C4] to-[#3D87AA] hover:from-[#4a90b0] hover:to-[#2d6d8e] text-white">
-              Buy Package
+            <Button size="sm" onClick={() => setShowCoaching(true)} className="bg-gradient-to-r from-[#5BA4C4] to-[#3D87AA] hover:from-[#4a90b0] hover:to-[#2d6d8e] text-white">
+              Request 1:1 Coaching
             </Button>
           </div>
 
@@ -232,6 +227,16 @@ Provide response in JSON format:
             </div>
           )}
 
+          {error && !loading && (
+            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-800 dark:text-red-400">Couldn&apos;t analyze that</p>
+                <p className="text-xs text-red-700 dark:text-red-500 mt-1">{error}</p>
+              </div>
+            </div>
+          )}
+
           {!profile?.resume_url && !profile?.intro_video_url && (
             <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
@@ -244,7 +249,12 @@ Provide response in JSON format:
         </CardContent>
       </Card>
 
-
+      <CoachingRequestModal
+        open={showCoaching}
+        onOpenChange={setShowCoaching}
+        user={user}
+        profile={profile}
+      />
     </>
   );
 }

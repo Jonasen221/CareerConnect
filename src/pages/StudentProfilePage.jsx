@@ -12,6 +12,7 @@ import { useDemoPreview } from '@/lib/DemoPreviewContext';
 import EducationLevelBadge from '../components/students/EducationLevelBadge';
 import KeywordPicker from '../components/keywords/KeywordPicker';
 import { FolderKanban, Plus, ExternalLink, Tag } from 'lucide-react';
+import { COUNTRIES, DEGREE_LEVELS, degreeLabel } from '@/lib/countries';
 
 const EDUCATION_LEVELS = [
   { value: 'high_school', label: 'High school' },
@@ -24,7 +25,6 @@ const WORK_PREFS = [{ value: "full_time", label: "Full-time" },{ value: "part_ti
 const GRAD_YEARS = Array.from({ length: 41 }, (_, i) => 1990 + i);
 const INDUSTRIES = ["Technology", "Finance", "Healthcare", "Consulting", "Media", "Manufacturing", "Retail", "Education", "Government", "Non-profit", "Energy", "Real Estate", "Telecommunications", "Transportation", "Hospitality", "Agriculture", "Construction", "Law"];
 const LANGUAGES = ["English", "Spanish", "Mandarin", "Hindi", "French", "Arabic", "Portuguese", "Russian", "Japanese", "German", "Korean", "Italian", "Dutch", "Swedish", "Polish", "Turkish", "Greek", "Vietnamese", "Thai", "Hebrew", "Tagalog", "Bengali", "Urdu"];
-const COUNTRIES = ["United States", "United Kingdom", "Canada", "Australia", "Germany", "France", "Spain", "Italy", "Netherlands", "Sweden", "Switzerland", "Singapore", "Japan", "China", "India", "Brazil", "Mexico", "South Korea"];
 
 export default function StudentProfilePage() {
   const navigate = useNavigate();
@@ -103,6 +103,10 @@ export default function StudentProfilePage() {
   };
 
   const [cvUploading, setCvUploading] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoError, setVideoError] = useState('');
+  const [linkedinDraft, setLinkedinDraft] = useState('');
+  const [savingLinkedin, setSavingLinkedin] = useState(false);
 
   const handleCvUpload = async (e) => {
     if (profile?.id === 'preview') return;
@@ -114,6 +118,47 @@ export default function StudentProfilePage() {
     setProfile(updated);
     setFormData(updated);
     setCvUploading(false);
+  };
+
+  const handleVideoUpload = async (e) => {
+    if (profile?.id === 'preview') return;
+    const file = e.target.files[0];
+    if (!file) return;
+    // 100 MB ceiling — bigger files time-out on the free Supabase storage tier
+    // and the resulting 413 is a much worse UX than a friendly stop here.
+    if (file.size > 100 * 1024 * 1024) {
+      setVideoError('Video is larger than 100 MB. Please trim or compress it before uploading.');
+      return;
+    }
+    setVideoError('');
+    setVideoUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const updated = await base44.entities.StudentProfile.update(profile.id, { intro_video_url: file_url });
+      setProfile(updated);
+      setFormData(updated);
+    } catch (err) {
+      setVideoError(err?.message || 'Upload failed. Please try again.');
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
+  const handleRemoveVideo = async () => {
+    if (profile?.id === 'preview') return;
+    const updated = await base44.entities.StudentProfile.update(profile.id, { intro_video_url: null });
+    setProfile(updated);
+    setFormData(updated);
+  };
+
+  const handleSaveLinkedin = async () => {
+    if (profile?.id === 'preview') return;
+    setSavingLinkedin(true);
+    const updated = await base44.entities.StudentProfile.update(profile.id, { linkedin_url: linkedinDraft.trim() });
+    setProfile(updated);
+    setFormData(updated);
+    setLinkedinDraft('');
+    setSavingLinkedin(false);
   };
 
   const [customSkill, setCustomSkill] = useState('');
@@ -253,6 +298,13 @@ export default function StudentProfilePage() {
                 : <p className="mt-1 text-slate-800 dark:text-slate-100 font-medium">{profile.education_level ? (EDUCATION_LEVELS.find(l => l.value === profile.education_level)?.label || profile.education_level) : '—'}</p>
               }
             </div>
+            <div>
+              <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Degree</Label>
+              {editing
+                ? <Select value={formData.degree_level || ''} onValueChange={v => setFormData(p => ({ ...p, degree_level: v }))}><SelectTrigger className="mt-1.5 bg-white text-slate-800"><SelectValue placeholder="Select your highest qualification" /></SelectTrigger><SelectContent>{DEGREE_LEVELS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}</SelectContent></Select>
+                : <p className="mt-1 text-slate-800 dark:text-slate-100 font-medium flex items-center gap-1"><GraduationCap className="w-4 h-4 text-slate-400" />{degreeLabel(profile.degree_level) || '—'}</p>
+              }
+            </div>
             </div>
 
           <div>
@@ -326,12 +378,35 @@ export default function StudentProfilePage() {
             }
           </div>
 
-          {profile.intro_video_url && (
-            <div>
-              <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block flex items-center gap-1"><Video className="w-3.5 h-3.5" /> 90-Second Pitch</Label>
-              <video src={profile.intro_video_url} controls className="w-full rounded-2xl border border-slate-200 max-h-72 bg-black" />
-            </div>
-          )}
+          <div>
+            <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block flex items-center gap-1">
+              <Video className="w-3.5 h-3.5" /> 90-Second Intro Video <span className="text-slate-400 font-normal normal-case ml-1">(optional)</span>
+            </Label>
+            {profile.intro_video_url ? (
+              <div className="space-y-2">
+                <video src={profile.intro_video_url} controls className="w-full rounded-2xl border border-slate-200 max-h-72 bg-black" />
+                <div className="flex items-center gap-3">
+                  <label className="cursor-pointer text-xs text-[#5BA4C4] hover:underline font-medium">
+                    {videoUploading ? 'Uploading…' : 'Replace video'}
+                    <input type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" onChange={handleVideoUpload} disabled={videoUploading} />
+                  </label>
+                  <button type="button" onClick={handleRemoveVideo} disabled={videoUploading} className="text-xs text-red-500 hover:underline font-medium">
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className={`flex items-center gap-3 p-4 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${videoUploading ? 'opacity-60 pointer-events-none' : 'border-[#A8D4E8] bg-[#EAF5FB] hover:bg-[#daeef7]'}`}>
+                <Upload className="w-5 h-5 text-[#3D87AA]" />
+                <div>
+                  <p className="text-sm font-semibold text-[#2d5f7a]">{videoUploading ? 'Uploading…' : 'Upload your 90-second intro'}</p>
+                  <p className="text-xs text-slate-500">MP4, MOV or WebM · max 100 MB</p>
+                </div>
+                <input type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" onChange={handleVideoUpload} disabled={videoUploading} />
+              </label>
+            )}
+            {videoError && <p className="text-xs text-red-600 mt-2">{videoError}</p>}
+          </div>
 
           <div>
             <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
@@ -425,7 +500,27 @@ export default function StudentProfilePage() {
             <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider">LinkedIn</Label>
             {editing
               ? <Input value={formData.linkedin_url || ''} onChange={e => setFormData(p => ({ ...p, linkedin_url: e.target.value }))} className="mt-1.5" placeholder="linkedin.com/in/yourname" />
-              : <div className="mt-1">{profile.linkedin_url ? <a href={profile.linkedin_url.startsWith('http') ? profile.linkedin_url : `https://${profile.linkedin_url}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#5BA4C4] hover:underline"><LinkIcon className="w-4 h-4" />{profile.linkedin_url}</a> : <p className="text-slate-400 text-sm">No LinkedIn added</p>}</div>
+              : <div className="mt-1">{profile.linkedin_url
+                  ? <a href={profile.linkedin_url.startsWith('http') ? profile.linkedin_url : `https://${profile.linkedin_url}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#5BA4C4] hover:underline"><LinkIcon className="w-4 h-4" />{profile.linkedin_url}</a>
+                  : (
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input
+                        value={linkedinDraft}
+                        onChange={(e) => setLinkedinDraft(e.target.value)}
+                        placeholder="linkedin.com/in/yourname"
+                        className="bg-white text-slate-800 text-sm h-9"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleSaveLinkedin}
+                        disabled={savingLinkedin || !linkedinDraft.trim()}
+                        className="bg-[#5BA4C4] hover:bg-[#3D87AA] text-white"
+                      >
+                        {savingLinkedin ? 'Saving…' : 'Add'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
             }
           </div>
 
